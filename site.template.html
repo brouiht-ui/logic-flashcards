@@ -113,8 +113,11 @@ tr.done td { color: var(--muted); text-decoration: line-through; }
 /* reward panel */
 .reward { position: relative; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 18px rgba(20,30,70,.08); padding: 12px; margin-bottom: 14px; text-align: center; }
 .reward[hidden] { display: none; }
-.reward img { display: block; max-width: 100%; max-height: 300px; margin: 0 auto; }
-.reward img.spin { animation: spinIn .9s cubic-bezier(.2,.9,.3,1.2) both; }
+.reward img, .reward video { display: block; max-width: 100%; max-height: 300px; margin: 0 auto; }
+.reward video { max-height: 360px; background: #000; }
+.reward [hidden] { display: none; }
+.reward .loading { padding: 40px 0; color: var(--muted); font-weight: 600; }
+.reward img.spin, .reward video.spin { animation: spinIn .9s cubic-bezier(.2,.9,.3,1.2) both; }
 .reward .x { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border: 1px solid var(--line); background: var(--panel); font-size: 18px; line-height: 1; }
 .reward .streak { position: absolute; top: 8px; left: 10px; z-index: 2; font-weight: 800; font-size: 14px; color: var(--accent); }
 .reward .streak.pop { animation: pop .5s ease-out; }
@@ -128,7 +131,7 @@ tr.done td { color: var(--muted); text-decoration: line-through; }
 .shake { animation: shake .35s; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 .mute { background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { .reward img.spin, .shake, .reward .streak.pop { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .reward img.spin, .reward video.spin, .shake, .reward .streak.pop { animation: none; } }
 </style>
 </head>
 <body>
@@ -148,6 +151,8 @@ tr.done td { color: var(--muted); text-decoration: line-through; }
     <span class="streak" id="streak"></span>
     <button class="x" id="rewardClose" type="button" aria-label="Hide reward">&times;</button>
     <img id="rewardImg" alt="Reward">
+    <video id="rewardVid" playsinline loop controls hidden></video>
+    <div class="loading" id="rewardLoading" hidden>Loading video&hellip;</div>
   </aside>
   <main id="view"></main>
 </div>
@@ -410,42 +415,90 @@ document.addEventListener("keydown", e => {
   }
 });
 
-// ---- rewards: rewards.json lists the image paths; admin.html edits it ----
-let rewards = [], streak = 0;
+// ---- rewards: rewards.json lists pictures (paths) and videos ({ type: "video", id, mime, parts }); admin.html edits it ----
+let rewards = [], streak = 0, upcoming = null, showing = 0;
+const rewardKey = e => typeof e === "string" ? e : e.id;
+const isVideo = e => e && typeof e === "object" && e.type === "video";
 fetch("rewards.json?v=" + Date.now()).then(r => r.ok ? r.json() : { images: [] })
-  .then(d => { rewards = Array.isArray(d.images) ? d.images : []; })
+  .then(d => { rewards = Array.isArray(d.images) ? d.images.filter(e => typeof e === "string" || (isVideo(e) && Array.isArray(e.parts))) : []; queueNext(); })
   .catch(() => {});
 
-function celebrate() {
+// Videos are stored in 4 MB pieces; fetch them all and join them into one playable file.
+// Keeps the last few in memory so the queued-up next reward is ready instantly.
+const videoCache = new Map();
+function loadVideo(e) {
+  if (!videoCache.has(e.id)) {
+    const p = Promise.all(e.parts.map(u => fetch(u).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })))
+      .then(blobs => URL.createObjectURL(new Blob(blobs, { type: e.mime || "video/mp4" })));
+    p.catch(() => videoCache.delete(e.id));
+    videoCache.set(e.id, p);
+    while (videoCache.size > 3) {
+      const [oldId, oldP] = videoCache.entries().next().value;
+      videoCache.delete(oldId);
+      oldP.then(url => { if ($("#rewardVid").src !== url) URL.revokeObjectURL(url); }).catch(() => {});
+    }
+  }
+  return videoCache.get(e.id);
+}
+function preload(e) {
+  if (!e) return;
+  if (isVideo(e)) loadVideo(e).catch(() => {});
+  else new Image().src = e;
+}
+function queueNext() { upcoming = rewards.length ? nextReward() : null; preload(upcoming); }
+
+async function celebrate() {
   streak++;
   sound(true);
   confetti();
-  if (!rewards.length) return;
-  const src = nextReward();
-  const box = $("#reward"), img = $("#rewardImg"), st = $("#streak");
-  img.classList.remove("spin");
-  img.src = src;
-  box.hidden = false;
-  void img.offsetWidth; // restart the animation
-  img.classList.add("spin");
+  const st = $("#streak");
   st.textContent = streak > 1 ? `\u{1F525} ${streak} in a row` : "";
   st.classList.remove("pop"); void st.offsetWidth; st.classList.add("pop");
+  if (!rewards.length) return;
+  const keys = rewards.map(rewardKey);
+  const entry = upcoming && keys.includes(rewardKey(upcoming)) ? upcoming : nextReward();
+  queueNext();
+  const box = $("#reward"), img = $("#rewardImg"), vid = $("#rewardVid"), loading = $("#rewardLoading");
+  const ticket = ++showing; // a newer right answer wins if this one is still loading
+  box.hidden = false;
+  vid.pause();
+  let el;
+  if (isVideo(entry)) {
+    img.hidden = true; vid.hidden = true; loading.hidden = false;
+    let url;
+    try { url = await loadVideo(entry); } catch { if (ticket === showing) loading.textContent = "Couldn't load this video."; return; }
+    if (ticket !== showing) return;
+    loading.hidden = true; vid.hidden = false;
+    vid.src = url;
+    vid.muted = muted;
+    vid.play().catch(() => { vid.muted = true; vid.play().catch(() => {}); });
+    el = vid;
+  } else {
+    vid.hidden = true; loading.hidden = true; img.hidden = false;
+    vid.removeAttribute("src"); vid.load();
+    img.src = entry;
+    el = img;
+  }
+  el.classList.remove("spin");
+  void el.offsetWidth; // restart the animation
+  el.classList.add("spin");
 }
-// Shuffle-deck order: every picture shows once before any repeats, remembered across reloads.
+// Shuffle-deck order: every reward shows once before any repeats, remembered across reloads.
 // New uploads are unseen, so they come up within the current round.
 function nextReward() {
-  const seen = store.get("seenRewards", []).filter(p => rewards.includes(p));
-  let unseen = rewards.filter(p => !seen.includes(p)), choices = unseen;
-  if (!unseen.length) {
-    // new round: everything is back in, but don't open it with the picture just shown
+  const keys = rewards.map(rewardKey);
+  const seen = store.get("seenRewards", []).filter(k => keys.includes(k));
+  let choices = keys.filter(k => !seen.includes(k));
+  if (!choices.length) {
+    // new round: everything is back in, but don't open it with the one just shown
     const last = seen[seen.length - 1];
     seen.length = 0;
-    choices = rewards.length > 1 ? rewards.filter(p => p !== last) : rewards;
+    choices = keys.length > 1 ? keys.filter(k => k !== last) : keys;
   }
   const pick = choices[Math.floor(Math.random() * choices.length)];
   seen.push(pick);
   store.set("seenRewards", seen);
-  return pick;
+  return rewards[keys.indexOf(pick)];
 }
 function miss() {
   streak = 0;
@@ -454,7 +507,7 @@ function miss() {
   const el = $("#card") || $("#opts");
   if (el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
 }
-$("#rewardClose").onclick = () => { $("#reward").hidden = true; };
+$("#rewardClose").onclick = () => { $("#reward").hidden = true; $("#rewardVid").pause(); };
 
 let muted = store.get("muted", false), actx = null;
 function renderMute() { $("#mute").textContent = muted ? "\u{1F507} Sound off" : "\u{1F50A} Sound on"; }

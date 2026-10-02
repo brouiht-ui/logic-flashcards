@@ -37,6 +37,10 @@ input[type=password] { flex: 1; min-width: 200px; padding: 10px 12px; border: 2p
 .tile { background: var(--panel); border: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .tile img { width: 100%; height: 150px; object-fit: cover; background: var(--bg); }
 .tile span { font-size: 12px; color: var(--muted); word-break: break-all; }
+.prog { height: 8px; background: var(--line); margin: -6px 0 14px; }
+.prog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.vid { width: 100%; height: 150px; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-weight: 700; }
+.vid small { font-weight: 400; opacity: .7; }
 .status { min-height: 1.5em; font-size: 14px; margin: 8px 0 14px; }
 .status.err { color: var(--bad); } .status.ok { color: var(--good); }
 .help { font-size: 14px; color: var(--muted); }
@@ -61,11 +65,12 @@ a { color: var(--accent); }
 
   <div id="panel" hidden>
     <label class="drop" id="drop">
-      <b>Drop pictures here</b>
-      or click to choose files (JPG, PNG, GIF, WebP)
-      <input type="file" id="file" accept="image/*" multiple hidden>
+      <b>Drop pictures or videos here</b>
+      or click to choose files (JPG, PNG, GIF, WebP, MP4, WebM, MOV &middot; videos up to 150 MB)
+      <input type="file" id="file" accept="image/*,video/*" multiple hidden>
     </label>
     <div class="status" id="status"></div>
+    <div class="prog" id="prog" hidden><i></i></div>
     <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
       <b id="count">Rewards</b>
       <button class="btn" id="logout">Lock</button>
@@ -104,13 +109,17 @@ async function call(action, extra = {}) {
   return data;
 }
 
+const mb = n => (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + " MB";
+
 function renderGrid() {
   const n = images.length;
-  $("#count").textContent = n ? `${n} reward${n === 1 ? "" : "s"}` : "No rewards yet. Drop some pictures above.";
+  $("#count").textContent = n ? `${n} reward${n === 1 ? "" : "s"}` : "No rewards yet. Drop some pictures or videos above.";
   $("#grid").innerHTML = images.map((im, i) => `
     <div class="tile">
-      <img src="${im.url}?t=${Date.now()}" alt="" loading="lazy">
-      <span>${im.path.replace(/</g, "&lt;")}</span>
+      ${im.type === "video"
+        ? `<div class="vid">&#127916; Video<small>${im.size ? mb(im.size) : `${im.parts} piece${im.parts === 1 ? "" : "s"}`}</small></div>`
+        : `<img src="${im.url}?t=${Date.now()}" alt="" loading="lazy">`}
+      <span>${im.id.replace(/</g, "&lt;")}</span>
       <button class="btn bad" data-del="${i}">Remove</button>
     </div>`).join("");
 }
@@ -129,50 +138,71 @@ async function unlock() {
   } finally { $("#saveToken").disabled = false; }
 }
 
-// Shrink big photos so uploads stay under Netlify's 6 MB request limit (GIFs are kept as-is to keep animation)
-const MAX_B64 = 5.5 * 1024 * 1024;
+// Netlify caps a request at ~6 MB, so everything goes up in 4 MB pieces (about 5.4 MB once encoded)
+const PIECE = 4 * 1024 * 1024, MAX_VIDEO = 150 * 1024 * 1024;
 const fileB64 = blob => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = () => bad(r.error); r.readAsDataURL(blob); });
-async function prepare(file) {
+
+// Big photos are shrunk to 1600px JPEG so they load fast; GIFs are kept as-is to keep the animation
+async function preparePicture(file) {
   if (file.type === "image/gif") {
-    const data = await fileB64(file);
-    if (data.length > MAX_B64) throw new Error(`${file.name} is too big. GIFs need to be under about 4 MB.`);
-    return { name: file.name, data };
+    if (file.size > PIECE) throw new Error(`${file.name} is too big. GIFs need to be under 4 MB.`);
+    return { name: file.name, blob: file };
   }
   const img = await createImageBitmap(file);
   const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
-  if (scale === 1 && file.size < 1.5 * 1024 * 1024) return { name: file.name, data: await fileB64(file) };
+  if (scale === 1 && file.size < 1.5 * 1024 * 1024) return { name: file.name, blob: file };
   const c = document.createElement("canvas");
   c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
   c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
   const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.88));
-  return { name: file.name.replace(/\.[^.]+$/, "") + ".jpg", data: await fileB64(blob) };
+  return { name: file.name.replace(/\.[^.]+$/, "") + ".jpg", blob };
+}
+
+function progress(frac) {
+  const el = $("#prog");
+  el.hidden = frac == null;
+  el.firstElementChild.style.width = ((frac || 0) * 100).toFixed(1) + "%";
 }
 
 let busy = false;
 async function upload(files) {
-  files = [...files].filter(f => f.type.startsWith("image/"));
+  files = [...files].filter(f => f.type.startsWith("image/") || f.type.startsWith("video/"));
   if (!files.length || busy) return;
+  const big = files.find(f => f.type.startsWith("video/") && f.size > MAX_VIDEO);
+  if (big) return status(`${big.name} is ${mb(big.size)}. Videos need to be under 150 MB.`, "err");
   busy = true;
   try {
     for (let i = 0; i < files.length; i++) {
-      status(`Uploading ${i + 1} of ${files.length}: ${files[i].name}...`);
-      await call("add", await prepare(files[i]));
+      const f = files[i], isVideo = f.type.startsWith("video/");
+      const label = `${files.length > 1 ? `${i + 1} of ${files.length}: ` : ""}${f.name}`;
+      const { name, blob } = isVideo ? { name: f.name, blob: f } : await preparePicture(f);
+      const count = Math.max(1, Math.ceil(blob.size / PIECE));
+      const shas = [];
+      for (let k = 0; k < count; k++) {
+        status(`Uploading ${label}${count > 1 ? ` (${Math.round((k / count) * 100)}%)` : ""}...`);
+        progress((i + k / count) / files.length);
+        const data = await fileB64(blob.slice(k * PIECE, (k + 1) * PIECE));
+        shas.push((await call("blob", { data })).sha);
+      }
+      status(`Saving ${label}...`);
+      await call("commit", { kind: isVideo ? "video" : "image", name, mime: f.type, size: blob.size, shas });
     }
+    progress(1);
     await refresh();
     status(`Added ${files.length}. Live on the site in a minute or two.`, "ok");
   } catch (e) {
     status(e.message, "err");
-  } finally { busy = false; }
+  } finally { busy = false; setTimeout(() => progress(null), 800); }
 }
 
 async function remove(i) {
   if (busy) return;
-  const path = images[i].path;
-  if (!confirm(`Remove ${path} from the rewards?`)) return;
+  const id = images[i].id;
+  if (!confirm(`Remove ${id} from the rewards?`)) return;
   busy = true;
   try {
-    status(`Removing ${path}...`);
-    await call("remove", { path });
+    status(`Removing ${id}...`);
+    await call("remove", { id });
     await refresh();
     status("Removed. The site updates in a minute or two.", "ok");
   } catch (e) {
