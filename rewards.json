@@ -70,6 +70,15 @@
         "rewards/1790981779090-ayiown5tahxmchu5/part001.bin",
         "rewards/1790981779090-ayiown5tahxmchu5/part002.bin"
       ]
+    },
+    {
+      "type": "video",
+      "id": "rewards/1790981784677-sibbil30xigkcyqc",
+      "mime": "video/mp4",
+      "size": 2578663,
+      "parts": [
+        "rewards/1790981784677-sibbil30xigkcyqc/part000.bin"
+      ]
     }
   ]
 }
