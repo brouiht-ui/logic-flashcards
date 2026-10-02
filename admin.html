@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Rewards Admin</title>
+<style>
+:root {
+  --bg: #f6f7fb; --panel: #ffffff; --ink: #1d2433; --muted: #646f86; --line: #dfe3ee;
+  --accent: #4255ff; --accent-ink: #ffffff; --good: #18a26b; --bad: #e0483e; --soft: #eef0ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1424; --panel: #1a2033; --ink: #eef1f8; --muted: #9aa3ba; --line: #2c3450;
+    --accent: #7b88ff; --accent-ink: #0f1424; --good: #3ccf92; --bad: #ff6b61; --soft: #232b48;
+  }
+}
+* { box-sizing: border-box; border-radius: 0; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button, input { font: inherit; color: inherit; }
+.wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+h1 { font-size: 22px; margin: 0 0 2px; }
+.sub { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+.box { background: var(--panel); border: 1px solid var(--line); padding: 16px; margin-bottom: 16px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+input[type=password] { flex: 1; min-width: 200px; padding: 10px 12px; border: 2px solid var(--line); background: var(--bg); }
+.btn { border: 2px solid var(--line); background: var(--panel); padding: 10px 14px; font-weight: 700; cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.bad { border-color: var(--bad); color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: default; }
+.drop { border: 3px dashed var(--line); padding: 34px 16px; text-align: center; color: var(--muted); cursor: pointer; background: var(--panel); margin-bottom: 16px; }
+.drop.over { border-color: var(--accent); background: var(--soft); color: var(--accent); }
+.drop b { display: block; font-size: 18px; color: var(--ink); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.tile img { width: 100%; height: 150px; object-fit: cover; background: var(--bg); }
+.tile span { font-size: 12px; color: var(--muted); word-break: break-all; }
+.status { min-height: 1.5em; font-size: 14px; margin: 8px 0 14px; }
+.status.err { color: var(--bad); } .status.ok { color: var(--good); }
+.help { font-size: 14px; color: var(--muted); }
+.help ol { padding-left: 20px; margin: 6px 0; }
+a { color: var(--accent); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Rewards admin</h1>
+  <p class="sub">Pictures shown when someone gets a question right. Changes go live on the site about a minute after you save. <a href="./">Back to the site</a></p>
+
+  <section class="box" id="login">
+    <b>Unlock with your GitHub key</b>
+    <p class="help">This page saves straight to your GitHub repo, so it needs a GitHub access key. The key is kept only in this browser on this device and is only ever sent to GitHub.</p>
+    <div class="row">
+      <input type="password" id="token" placeholder="github_pat_..." autocomplete="off">
+      <button class="btn primary" id="saveToken">Unlock</button>
+    </div>
+    <details class="help" style="margin-top:10px">
+      <summary>How to get a key (2 minutes)</summary>
+      <ol>
+        <li>On GitHub go to <b>Settings &rarr; Developer settings &rarr; Personal access tokens &rarr; Fine-grained tokens &rarr; Generate new token</b>.</li>
+        <li>Repository access: <b>Only select repositories</b> &rarr; <b>logic-flashcards</b>.</li>
+        <li>Permissions &rarr; Repository permissions &rarr; <b>Contents: Read and write</b>.</li>
+        <li>Generate it, copy it, paste it above. Don't share it with anyone.</li>
+      </ol>
+    </details>
+  </section>
+
+  <div id="panel" hidden>
+    <label class="drop" id="drop">
+      <b>Drop pictures here</b>
+      or click to choose files (JPG, PNG, GIF, WebP)
+      <input type="file" id="file" accept="image/*" multiple hidden>
+    </label>
+    <div class="status" id="status"></div>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b id="count">Rewards</b>
+      <button class="btn" id="logout">Lock (forget key)</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<script>
+const OWNER = "brouiht-ui", REPO = "logic-flashcards", BRANCH = "main", MANIFEST = "rewards.json", DIR = "rewards";
+const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents/`;
+const $ = s => document.querySelector(s);
+
+const keyStore = {
+  get() { try { return localStorage.getItem("logic:ghtoken") || ""; } catch { return ""; } },
+  set(v) { try { v ? localStorage.setItem("logic:ghtoken", v) : localStorage.removeItem("logic:ghtoken"); } catch {} },
+};
+let token = keyStore.get();
+let manifest = { images: [] }, manifestSha = null;
+
+function status(msg, kind = "") { const el = $("#status"); el.textContent = msg; el.className = "status " + kind; }
+
+async function gh(path, opts = {}) {
+  const res = await fetch(API + path.split("/").map(encodeURIComponent).join("/") + (opts.method ? "" : `?ref=${BRANCH}&t=${Date.now()}`), {
+    ...opts,
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", ...(opts.headers || {}) },
+  });
+  if (res.status === 404 && !opts.method) return null;
+  if (!res.ok) {
+    let msg = res.status === 401 ? "GitHub rejected the key. Check it was copied fully and hasn't expired."
+      : res.status === 403 ? "The key doesn't have permission. It needs Contents: Read and write on logic-flashcards."
+      : `GitHub error ${res.status}`;
+    try { const j = await res.json(); if (res.status !== 401 && res.status !== 403 && j.message) msg += `: ${j.message}`; } catch {}
+    throw new Error(msg);
+  }
+  return res.status === 204 ? {} : res.json();
+}
+
+const b64 = str => btoa(unescape(encodeURIComponent(str)));
+const unb64 = str => decodeURIComponent(escape(atob(str.replace(/\n/g, ""))));
+const rawUrl = path => `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path.split("/").map(encodeURIComponent).join("/")}?t=${Date.now()}`;
+
+async function loadManifest() {
+  const f = await gh(MANIFEST);
+  if (f) { manifest = JSON.parse(unb64(f.content)); manifestSha = f.sha; }
+  else { manifest = { images: [] }; manifestSha = null; }
+  if (!Array.isArray(manifest.images)) manifest.images = [];
+}
+
+async function saveManifest(message) {
+  const body = { message, branch: BRANCH, content: b64(JSON.stringify(manifest, null, 2) + "\n") };
+  if (manifestSha) body.sha = manifestSha;
+  const r = await gh(MANIFEST, { method: "PUT", body: JSON.stringify(body) });
+  manifestSha = r.content.sha;
+}
+
+function renderGrid() {
+  const n = manifest.images.length;
+  $("#count").textContent = n ? `${n} reward${n === 1 ? "" : "s"}` : "No rewards yet. Drop some pictures above.";
+  $("#grid").innerHTML = manifest.images.map((p, i) => `
+    <div class="tile">
+      <img src="${rawUrl(p)}" alt="" loading="lazy">
+      <span>${p.replace(/</g, "&lt;")}</span>
+      <button class="btn bad" data-del="${i}">Remove</button>
+    </div>`).join("");
+}
+
+async function unlock() {
+  status("Connecting to GitHub...");
+  try {
+    await loadManifest();
+    $("#login").hidden = true; $("#panel").hidden = false;
+    renderGrid(); status("");
+  } catch (e) {
+    $("#login").hidden = false; $("#panel").hidden = true;
+    alert(e.message);
+    status("");
+  }
+}
+
+const readB64 = file => new Promise((ok, bad) => {
+  const r = new FileReader();
+  r.onload = () => ok(String(r.result).split(",")[1]);
+  r.onerror = () => bad(r.error);
+  r.readAsDataURL(file);
+});
+
+let busy = false;
+async function upload(files) {
+  files = [...files].filter(f => f.type.startsWith("image/"));
+  if (!files.length || busy) return;
+  const big = files.find(f => f.size > 20 * 1024 * 1024);
+  if (big) return status(`${big.name} is over 20 MB. Use a smaller picture.`, "err");
+  busy = true;
+  try {
+    await loadManifest(); // pick up changes made from another tab or device
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      status(`Uploading ${i + 1} of ${files.length}: ${f.name}...`);
+      const ext = (f.name.match(/\.[a-z0-9]+$/i) || [".png"])[0].toLowerCase();
+      const base = f.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "reward";
+      const path = `${DIR}/${Date.now()}-${base}${ext}`;
+      await gh(path, { method: "PUT", body: JSON.stringify({ message: `Add reward ${path}`, branch: BRANCH, content: await readB64(f) }) });
+      manifest.images.push(path);
+    }
+    await saveManifest(`Add ${files.length} reward picture${files.length === 1 ? "" : "s"}`);
+    renderGrid();
+    status(`Added ${files.length}. Live on the site in about a minute.`, "ok");
+  } catch (e) {
+    status(e.message, "err");
+  } finally { busy = false; }
+}
+
+async function remove(i) {
+  if (busy) return;
+  const path = manifest.images[i];
+  if (!confirm(`Remove ${path} from the rewards?`)) return;
+  busy = true;
+  try {
+    status(`Removing ${path}...`);
+    await loadManifest();
+    manifest.images = manifest.images.filter(p => p !== path);
+    await saveManifest(`Remove reward ${path}`);
+    const f = await gh(path);
+    if (f) await gh(path, { method: "DELETE", body: JSON.stringify({ message: `Delete reward ${path}`, branch: BRANCH, sha: f.sha }) });
+    renderGrid();
+    status("Removed. The site updates in about a minute.", "ok");
+  } catch (e) {
+    status(e.message, "err");
+  } finally { busy = false; }
+}
+
+$("#saveToken").onclick = () => { token = $("#token").value.trim(); if (!token) return; keyStore.set(token); $("#token").value = ""; unlock(); };
+$("#token").onkeydown = e => { if (e.key === "Enter") $("#saveToken").click(); };
+$("#logout").onclick = () => { token = ""; keyStore.set(""); $("#panel").hidden = true; $("#login").hidden = false; };
+$("#grid").onclick = e => { const b = e.target.closest("[data-del]"); if (b) remove(+b.dataset.del); };
+$("#file").onchange = e => { upload(e.target.files); e.target.value = ""; };
+const drop = $("#drop");
+["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => upload(e.dataTransfer.files));
+// dropping a file anywhere else on the page shouldn't navigate away
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", e => e.preventDefault());
+
+if (token) unlock();
+</script>
+</body>
+</html>

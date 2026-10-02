@@ -110,13 +110,32 @@ tr.done td { color: var(--muted); text-decoration: line-through; }
   .stats { grid-template-columns: 1fr 1fr; }
   th:nth-child(3), td:nth-child(3) { display: none; }
 }
+/* reward panel */
+.reward { position: relative; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 18px rgba(20,30,70,.08); padding: 12px; margin-bottom: 14px; text-align: center; }
+.reward[hidden] { display: none; }
+.reward img { display: block; max-width: 100%; max-height: 300px; margin: 0 auto; }
+.reward img.spin { animation: spinIn .9s cubic-bezier(.2,.9,.3,1.2) both; }
+.reward .x { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border: 1px solid var(--line); background: var(--panel); font-size: 18px; line-height: 1; }
+.reward .streak { position: absolute; top: 8px; left: 10px; z-index: 2; font-weight: 800; font-size: 14px; color: var(--accent); }
+.reward .streak.pop { animation: pop .5s ease-out; }
+@keyframes spinIn {
+  0% { transform: scale(0) rotate(-720deg); opacity: 0; }
+  70% { transform: scale(1.08) rotate(12deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.6); } 100% { transform: scale(1); } }
+.confetti { position: fixed; top: 0; left: 0; width: 9px; height: 14px; pointer-events: none; z-index: 50; will-change: transform; }
+.shake { animation: shake .35s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.mute { background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .reward img.spin, .shake, .reward .streak.pop { animation: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Arguments, Logic &amp; Fallacies</h1>
-    <span class="sub">24 cards &middot; 4 sets</span>
+    <span class="sub">24 cards &middot; 4 sets &nbsp;<button class="mute" id="mute" type="button"></button></span>
   </header>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="cards" aria-selected="true">Flashcards</button>
@@ -125,6 +144,11 @@ tr.done td { color: var(--muted); text-decoration: line-through; }
     <button role="tab" data-tab="plan" aria-selected="false">Study plan</button>
   </nav>
   <div class="sets" id="sets"></div>
+  <aside class="reward" id="reward" hidden aria-live="polite">
+    <span class="streak" id="streak"></span>
+    <button class="x" id="rewardClose" type="button" aria-label="Hide reward">&times;</button>
+    <img id="rewardImg" alt="Reward">
+  </aside>
   <main id="view"></main>
 </div>
 
@@ -282,7 +306,7 @@ function grade(ok) {
   (ok ? s.right : s.wrong).push(c);
   record(c.id, ok);
   s.i++; s.flipped = false; render();
-  if (ok) view.insertAdjacentHTML("afterbegin", `<img src="reward${1 + Math.floor(Math.random() * 3)}.png" alt="" style="display:block;max-width:100%;max-height:260px;margin:0 auto 12px">`);
+  ok ? celebrate() : miss();
 }
 function renderChoice(total) {
   const s = session, q = s.deck[s.i], a = s.answered;
@@ -307,7 +331,8 @@ function feedback(q, a) {
   let more = "";
   if (q.card) more = plain(q.card.a.replace(/<i>Check this[^<]*<\/i>/, "")).slice(0, 260);
   else if (EXPLAIN[q.n]) more = EXPLAIN[q.n];
-return `<div class="feedback ${ok ? "" : "no"}"><b>${ok ? "Correct!" : `Not quite. The answer is ${q.answer}.`}</b>${more}${ok ? `<img src="reward${1 + Math.floor(Math.random() * 3)}.png" alt="" style="display:block;max-width:100%;max-height:320px;margin-top:10px">` : ""}</div>`;}
+  return `<div class="feedback ${ok ? "" : "no"}"><b>${ok ? "Correct!" : `Not quite. The answer is ${q.answer}.`}</b>${more}</div>`;
+}
 function choose(o) {
   const s = session, q = s.deck[s.i];
   s.answered = o;
@@ -315,6 +340,7 @@ function choose(o) {
   (ok ? s.right : s.wrong).push(q);
   if (q.card) record(q.card.id, ok);
   render();
+  ok ? celebrate() : miss();
 }
 function next() { session.i++; session.answered = null; render(); }
 
@@ -383,6 +409,79 @@ document.addEventListener("keydown", e => {
     else if (s.answered && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); next(); }
   }
 });
+
+// ---- rewards: rewards.json lists the image paths; admin.html edits it ----
+let rewards = [], lastReward = -1, streak = 0;
+fetch("rewards.json?v=" + Date.now()).then(r => r.ok ? r.json() : { images: [] })
+  .then(d => { rewards = Array.isArray(d.images) ? d.images : []; })
+  .catch(() => {});
+
+function celebrate() {
+  streak++;
+  sound(true);
+  confetti();
+  if (!rewards.length) return;
+  let k = Math.floor(Math.random() * rewards.length);
+  if (rewards.length > 1 && k === lastReward) k = (k + 1) % rewards.length;
+  lastReward = k;
+  const box = $("#reward"), img = $("#rewardImg"), st = $("#streak");
+  img.classList.remove("spin");
+  img.src = rewards[k];
+  box.hidden = false;
+  void img.offsetWidth; // restart the animation
+  img.classList.add("spin");
+  st.textContent = streak > 1 ? `\u{1F525} ${streak} in a row` : "";
+  st.classList.remove("pop"); void st.offsetWidth; st.classList.add("pop");
+}
+function miss() {
+  streak = 0;
+  $("#streak").textContent = "";
+  sound(false);
+  const el = $("#card") || $("#opts");
+  if (el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+}
+$("#rewardClose").onclick = () => { $("#reward").hidden = true; };
+
+let muted = store.get("muted", false), actx = null;
+function renderMute() { $("#mute").textContent = muted ? "\u{1F507} Sound off" : "\u{1F50A} Sound on"; }
+$("#mute").onclick = () => { muted = !muted; store.set("muted", muted); renderMute(); };
+renderMute();
+function sound(ok) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = actx.currentTime;
+    const notes = ok ? [523.25, 659.25, 783.99, 1046.5] : [196, 155.56];
+    notes.forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = ok ? "triangle" : "sawtooth";
+      o.frequency.value = f;
+      const t = t0 + i * (ok ? 0.08 : 0.14), len = ok ? (i === notes.length - 1 ? 0.5 : 0.14) : 0.2;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(ok ? 0.25 : 0.12, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      o.connect(g).connect(actx.destination);
+      o.start(t); o.stop(t + len + 0.02);
+    });
+  } catch {}
+}
+function confetti() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colors = ["#4255ff", "#18a26b", "#e0483e", "#ffb020", "#c44dd8", "#2bb3e0"];
+  const cx = innerWidth / 2, cy = innerHeight / 3;
+  for (let i = 0; i < 70; i++) {
+    const d = document.createElement("i");
+    d.className = "confetti";
+    d.style.background = colors[i % colors.length];
+    document.body.appendChild(d);
+    const ang = Math.random() * Math.PI * 2, v = 160 + Math.random() * 320;
+    const dx = Math.cos(ang) * v, dy = Math.sin(ang) * v - 140;
+    d.animate([
+      { transform: `translate(${cx}px, ${cy}px) rotate(0deg)`, opacity: 1 },
+      { transform: `translate(${cx + dx}px, ${cy + dy + 420}px) rotate(${Math.random() * 900 - 450}deg)`, opacity: 0 },
+    ], { duration: 1100 + Math.random() * 700, easing: "cubic-bezier(.2,.6,.4,1)" }).onfinish = () => d.remove();
+  }
+}
 
 start();
 </script>
