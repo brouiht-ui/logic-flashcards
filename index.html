@@ -307,8 +307,7 @@ function feedback(q, a) {
   let more = "";
   if (q.card) more = plain(q.card.a.replace(/<i>Check this[^<]*<\/i>/, "")).slice(0, 260);
   else if (EXPLAIN[q.n]) more = EXPLAIN[q.n];
-  return `<div class="feedback ${ok ? "" : "no"}"><b>${ok ? "Correct!" : `Not quite. The answer is ${q.answer}.`}</b>${more}</div>`;
-}
+return `<div class="feedback ${ok ? "" : "no"}"><b>${ok ? "Correct!" : `Not quite. The answer is ${q.answer}.`}</b>${more}${ok ? `<img src="reward.jpg" alt="" style="display:block;max-width:100%;max-height:320px;margin-top:10px">` : ""}</div>`;}
 function choose(o) {
   const s = session, q = s.deck[s.i];
   s.answered = o;
