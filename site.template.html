@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logic Flashcards</title>
+<meta name="description" content="Flashcards, a learn mode and a practice test for arguments, logic and fallacies.">
+<style>
+:root {
+  --bg: #f6f7fb; --panel: #ffffff; --ink: #1d2433; --muted: #646f86; --line: #dfe3ee;
+  --accent: #4255ff; --accent-ink: #ffffff; --good: #18a26b; --bad: #e0483e; --soft: #eef0ff;
+  --A: #2f5d8a; --B: #7a3f8a; --C: #a2552a; --D: #2e7a4f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1424; --panel: #1a2033; --ink: #eef1f8; --muted: #9aa3ba; --line: #2c3450;
+    --accent: #7b88ff; --accent-ink: #0f1424; --good: #3ccf92; --bad: #ff6b61; --soft: #232b48;
+    --A: #6fa0d0; --B: #c48ad4; --C: #e09461; --D: #6cc796;
+  }
+}
+* { box-sizing: border-box; border-radius: 0; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--muted); font-size: 14px; }
+
+nav.tabs { display: flex; gap: 0; margin: 18px 0 14px; border-bottom: 2px solid var(--line); overflow-x: auto; }
+nav.tabs button { background: none; border: 0; padding: 10px 16px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+
+.sets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.chip { border: 2px solid var(--line); background: var(--panel); padding: 6px 12px; font-size: 14px; font-weight: 600; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--soft); color: var(--accent); }
+.chip .dot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: 1px; }
+
+.bar { height: 6px; background: var(--line); margin: 6px 0 14px; }
+.bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .25s; }
+.meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; gap: 10px; flex-wrap: wrap; }
+.score { font-weight: 600; }
+.score .g { color: var(--good); } .score .b { color: var(--bad); }
+
+/* flashcard */
+.scene { perspective: 1400px; margin: 4px 0 16px; }
+.card { position: relative; width: 100%; min-height: 340px; transform-style: preserve-3d; transition: transform .45s; cursor: pointer; }
+.card.flipped { transform: rotateY(180deg); }
+.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 18px rgba(20,30,70,.08); padding: 26px 28px; display: flex; flex-direction: column; overflow: auto; }
+.face.back { transform: rotateY(180deg); }
+.tag { align-self: flex-start; color: #fff; font-size: 12px; font-weight: 700; padding: 3px 9px; letter-spacing: .04em; }
+.face .q { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 21px; line-height: 1.45; padding: 10px 0; }
+.face .hint { text-align: center; color: var(--muted); font-size: 13px; }
+.face h2 { font-size: 22px; margin: 14px 0 8px; }
+.face .a { font-size: 16.5px; line-height: 1.55; }
+.check { margin-top: 12px; font-size: 13px; color: var(--muted); border-left: 3px solid var(--C); padding-left: 10px; }
+
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.btn { border: 2px solid var(--line); background: var(--panel); padding: 13px 14px; font-weight: 700; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.good { border-color: var(--good); color: var(--good); }
+.btn.bad { border-color: var(--bad); color: var(--bad); }
+.btn.good:hover { background: var(--good); color: #fff; }
+.btn.bad:hover { background: var(--bad); color: #fff; }
+.btn:disabled { opacity: .45; cursor: default; }
+.keys { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+kbd { border: 1px solid var(--line); padding: 0 5px; font: 12px ui-monospace, monospace; background: var(--panel); }
+
+/* multiple choice */
+.prompt { background: var(--panel); border: 1px solid var(--line); padding: 22px 24px; margin-bottom: 14px; box-shadow: 0 4px 18px rgba(20,30,70,.06); }
+.prompt .label { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+.prompt .body { font-size: 18px; line-height: 1.5; }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opt { text-align: left; border: 2px solid var(--line); background: var(--panel); padding: 14px 16px; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; }
+.opt .n { color: var(--muted); font-weight: 700; min-width: 1em; }
+.opt:hover:not(:disabled) { border-color: var(--accent); }
+.opt.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--panel)); }
+.opt.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, var(--panel)); }
+.opt:disabled { cursor: default; }
+.feedback { margin: 14px 0; padding: 14px 16px; border-left: 4px solid var(--good); background: var(--panel); }
+.feedback.no { border-left-color: var(--bad); }
+.feedback b { display: block; margin-bottom: 4px; }
+
+/* results */
+.results { background: var(--panel); border: 1px solid var(--line); padding: 26px; text-align: center; }
+.big { font-size: 54px; font-weight: 800; line-height: 1; margin: 6px 0; }
+.missed { text-align: left; margin: 18px 0; padding: 0; list-style: none; }
+.missed li { border-top: 1px solid var(--line); padding: 10px 0; }
+.missed li span { color: var(--muted); font-size: 14px; }
+
+/* schedule */
+table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); }
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 15px; }
+th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+td input { width: 20px; height: 20px; accent-color: var(--accent); }
+tr.done td { color: var(--muted); text-decoration: line-through; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+.stat { background: var(--panel); border: 1px solid var(--line); padding: 12px; }
+.stat b { display: block; font-size: 22px; }
+.stat span { font-size: 13px; color: var(--muted); }
+.tips { color: var(--muted); font-size: 14.5px; padding-left: 18px; }
+.link { background: none; border: 0; color: var(--accent); font-weight: 600; padding: 0; text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .opts { grid-template-columns: 1fr; }
+  .face .q { font-size: 18px; }
+  .card { min-height: 380px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Arguments, Logic &amp; Fallacies</h1>
+    <span class="sub">24 cards &middot; 4 sets</span>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="cards" aria-selected="true">Flashcards</button>
+    <button role="tab" data-tab="learn" aria-selected="false">Learn</button>
+    <button role="tab" data-tab="test" aria-selected="false">Practice test</button>
+    <button role="tab" data-tab="plan" aria-selected="false">Study plan</button>
+  </nav>
+  <div class="sets" id="sets"></div>
+  <main id="view"></main>
+</div>
+
+<script>
+const DATA = __DATA__;
+
+// Practice test: hand-written options so the distractors are real alternatives
+const TEST = [
+  ["\"My uncle smoked all his life and lived to 95, so smoking can't be that bad.\"", "Hasty generalization", ["Appeal to ignorance", "Slippery slope", "False analogy"]],
+  ["\"You can't trust his argument about climate policy; he drives an SUV.\"", "Ad hominem", ["Straw man", "Appeal to authority", "Begging the question"]],
+  ["\"Nobody has shown this supplement is harmful, so it's safe.\"", "Appeal to ignorance", ["Naturalistic fallacy", "Hasty generalization", "Appeal to authority"]],
+  ["\"We either ban phones in class entirely or accept that no one will learn.\"", "False dichotomy", ["Slippery slope", "Straw man", "Begging the question"]],
+  ["\"Free will exists, because we are free to choose what we do.\"", "Begging the question", ["Appeal to ignorance", "False dichotomy", "Naturalistic fallacy"]],
+  ["Feminists want equal pay. A critic replies: \"They want to make men second-class citizens.\"", "Straw man", ["Ad hominem", "Slippery slope", "False analogy"]],
+  ["\"If we allow food in the library, next it'll be parties, and then the place will be trashed.\"", "Slippery slope", ["False dichotomy", "Hasty generalization", "Straw man"]],
+  ["\"A Nobel-winning physicist says this vaccine is unsafe, so it is.\"", "Appeal to authority", ["Ad hominem", "Appeal to ignorance", "Confirmation bias"]],
+  ["\"The universe is like a watch. Watches have makers, so the universe does too.\"", "False analogy", ["Begging the question", "Hasty generalization", "Naturalistic fallacy"]],
+  ["\"Animals eat meat in nature, so eating meat must be morally right.\"", "Naturalistic fallacy", ["False analogy", "Appeal to ignorance", "Hasty generalization"]],
+  ["All birds can fly. Penguins are birds. So penguins can fly.", "Valid but not sound", ["Valid and sound", "Invalid but sound", "Invalid and unsound"]],
+  ["If it rains, the ground is wet. The ground is wet. So it rained.", "Invalid: affirming the consequent", ["Valid and sound", "Valid but not sound", "Invalid: denying the antecedent"]],
+];
+const EXPLAIN = {
+  11: "The form is valid (if the premises were true, the conclusion would have to be), but \"All birds can fly\" is false, so it is not sound.",
+  12: "The ground could be wet for another reason (a sprinkler). Reasoning from Q back to P is the formal fallacy of affirming the consequent.",
+};
+
+const SCHEDULE = [
+  [1, "Learn Set A", "A"], [2, "Learn Set B, review Set A", "AB"], [3, "Learn Set C, review Set B", "BC"],
+  [4, "Learn Set D, review Sets A and C", "ACD"], [5, "Review Sets B and D", "BD"], [6, "Review Set C", "C"],
+  [7, "Review Set D", "D"], [8, "Review Set A", "A"], [9, "Review Set B", "B"], [10, "Review Set C", "C"],
+  [11, "Review Set D", "D"], [15, "Final review: Set A", "A"], [16, "Final review: Set B", "B"],
+  [17, "Final review: Set C", "C"], [18, "Final review: Set D", "D"],
+];
+
+// ---- storage (per-viewer; page works without it) ----
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("logic:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("logic:" + k, JSON.stringify(v)); } catch {} },
+};
+
+const NAME_RE = /^(<b>)?Name the (<b>)?(fallacy|bias|effect)(<\/b>)?[.:]?(<\/b>)?\s*(<br\/>)*/;
+const cards = DATA.cards.map((c, i) => ({ ...c, id: i + 1, isName: NAME_RE.test(c.q) }));
+const plain = h => { const d = document.createElement("div"); d.innerHTML = h; return d.textContent.trim(); };
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const $ = s => document.querySelector(s);
+const view = $("#view");
+
+let tab = store.get("tab", "cards");
+let picked = new Set(store.get("sets", ["A", "B", "C", "D"]));
+let session = null;
+let stats = store.get("stats", {}); // id -> {r, w}
+
+function record(id, ok) {
+  const s = stats[id] || { r: 0, w: 0 };
+  ok ? s.r++ : s.w++;
+  stats[id] = s;
+  store.set("stats", stats);
+}
+
+// ---- set chips ----
+function renderSets() {
+  const el = $("#sets");
+  el.style.display = tab === "cards" || tab === "learn" ? "" : "none";
+  el.innerHTML = "ABCD".split("").map(s =>
+    `<button class="chip" data-set="${s}" aria-pressed="${picked.has(s)}" title="${DATA.sets[s]}"><span class="dot" style="background:var(--${s})"></span>Set ${s}</button>`
+  ).join("") + `<button class="chip" data-set="all" aria-pressed="false">All</button>`;
+}
+$("#sets").addEventListener("click", e => {
+  const b = e.target.closest("[data-set]"); if (!b) return;
+  const s = b.dataset.set;
+  if (s === "all") picked = new Set("ABCD");
+  else if (picked.has(s) && picked.size > 1) picked.delete(s);
+  else picked.add(s);
+  store.set("sets", [...picked]);
+  start();
+});
+
+// ---- tabs ----
+document.querySelector("nav.tabs").addEventListener("click", e => {
+  const b = e.target.closest("[data-tab]"); if (!b) return;
+  tab = b.dataset.tab; store.set("tab", tab); start();
+});
+function renderTabs() {
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
+}
+
+function start(deck) {
+  renderTabs(); renderSets();
+  const pool = deck || shuffle(cards.filter(c => picked.has(c.set)));
+  if (tab === "cards") session = { mode: "cards", deck: pool, i: 0, flipped: false, right: [], wrong: [] };
+  if (tab === "learn") session = { mode: "learn", deck: pool.map(makeQuestion), i: 0, answered: null, right: [], wrong: [] };
+  if (tab === "test") session = { mode: "test", deck: shuffle(TEST.map((t, i) => ({ n: i + 1, prompt: t[0], answer: t[1], opts: shuffle([t[1], ...t[2]]) }))), i: 0, answered: null, right: [], wrong: [] };
+  if (tab === "plan") session = { mode: "plan" };
+  render();
+}
+
+function makeQuestion(c) {
+  // "Name the fallacy" cards ask from the scenario; concept cards ask from the definition
+  const group = cards.filter(x => x.isName === c.isName && x.id !== c.id);
+  const opts = shuffle([c.title, ...shuffle(group).slice(0, 3).map(x => x.title)]);
+  return c.isName
+    ? { card: c, label: "Which fallacy, bias or effect is this?", prompt: c.q.replace(NAME_RE, ""), answer: c.title, opts }
+    : { card: c, label: "Which concept does this describe?", prompt: c.a.replace(/<i>Check this[^<]*<\/i>/, ""), answer: c.title, opts };
+}
+
+function header(total) {
+  const s = session, done = s.right.length + s.wrong.length;
+  return `<div class="meta"><span>${Math.min(s.i + 1, total)} / ${total}</span>
+    <span class="score"><span class="g">${s.right.length} right</span> &middot; <span class="b">${s.wrong.length} wrong</span></span></div>
+    <div class="bar"><i style="width:${(done / total) * 100}%"></i></div>`;
+}
+
+function render() {
+  const s = session;
+  if (s.mode === "plan") return renderPlan();
+  const total = s.deck.length;
+  if (s.i >= total) return renderResults();
+  if (s.mode === "cards") return renderCard(total);
+  return renderChoice(total);
+}
+
+function renderCard(total) {
+  const s = session, c = s.deck[s.i];
+  view.innerHTML = header(total) + `
+    <div class="scene"><div class="card ${s.flipped ? "flipped" : ""}" id="card" tabindex="0" aria-label="Flashcard, click to flip">
+      <div class="face front">
+        <span class="tag" style="background:var(--${c.set})">SET ${c.set} &nbsp;#${c.id}</span>
+        <div class="q"><div>${c.q}</div></div>
+        <div class="hint">Answer out loud first, then click to flip</div>
+      </div>
+      <div class="face back">
+        <span class="tag" style="background:var(--${c.set})">ANSWER</span>
+        <h2>${c.title}</h2>
+        <div class="a">${c.a}</div>
+      </div>
+    </div></div>
+    <div class="row" id="grade">
+      ${s.flipped
+        ? `<button class="btn bad" data-g="0">&#10007; Got it wrong</button><button class="btn good" data-g="1">&#10003; Got it right</button>`
+        : `<button class="btn primary" data-flip>Flip card</button>`}
+    </div>
+    <div class="keys"><kbd>Space</kbd> flip &nbsp; <kbd>1</kbd> wrong &nbsp; <kbd>2</kbd> right</div>`;
+  $("#card").onclick = flip;
+  $("#grade").onclick = e => {
+    if (e.target.closest("[data-flip]")) flip();
+    const g = e.target.closest("[data-g]"); if (g) grade(g.dataset.g === "1");
+  };
+}
+function flip() { session.flipped = !session.flipped; $("#card").classList.toggle("flipped", session.flipped); if (session.flipped) renderCardButtons(); }
+function renderCardButtons() {
+  $("#grade").innerHTML = `<button class="btn bad" data-g="0">&#10007; Got it wrong</button><button class="btn good" data-g="1">&#10003; Got it right</button>`;
+}
+function grade(ok) {
+  const s = session, c = s.deck[s.i];
+  (ok ? s.right : s.wrong).push(c);
+  record(c.id, ok);
+  s.i++; s.flipped = false; render();
+}
+
+function renderChoice(total) {
+  const s = session, q = s.deck[s.i], a = s.answered;
+  const isTest = s.mode === "test";
+  view.innerHTML = header(total) + `
+    <div class="prompt">
+      <div class="label">${isTest ? `Question ${q.n}: ${q.n > 10 ? "Judge the argument" : "Name the fallacy"}` : q.label}</div>
+      <div class="body">${q.prompt}</div>
+    </div>
+    <div class="opts" id="opts">${q.opts.map((o, k) => {
+      let cls = "";
+      if (a) { if (o === q.answer) cls = "right"; else if (o === a) cls = "wrong"; }
+      return `<button class="opt ${cls}" data-o="${k}" ${a ? "disabled" : ""}><span class="n">${k + 1}</span><span>${o}</span></button>`;
+    }).join("")}</div>
+    ${a ? feedback(q, a) + `<button class="btn primary" style="width:100%" id="next">${s.i + 1 < total ? "Next question" : "See results"}</button>` : ""}
+    <div class="keys"><kbd>1</kbd>-<kbd>4</kbd> answer &nbsp; <kbd>Enter</kbd> next</div>`;
+  $("#opts").onclick = e => { const b = e.target.closest("[data-o]"); if (b && !a) choose(q.opts[+b.dataset.o]); };
+  if (a) $("#next").onclick = next;
+}
+function feedback(q, a) {
+  const ok = a === q.answer;
+  let more = "";
+  if (q.card) more = plain(q.card.a.replace(/<i>Check this[^<]*<\/i>/, "")).slice(0, 260);
+  else if (EXPLAIN[q.n]) more = EXPLAIN[q.n];
+  return `<div class="feedback ${ok ? "" : "no"}"><b>${ok ? "Correct!" : `Not quite. The answer is ${q.answer}.`}</b>${more}</div>`;
+}
+function choose(o) {
+  const s = session, q = s.deck[s.i];
+  s.answered = o;
+  const ok = o === q.answer;
+  (ok ? s.right : s.wrong).push(q);
+  if (q.card) record(q.card.id, ok);
+  render();
+}
+function next() { session.i++; session.answered = null; render(); }
+
+function renderResults() {
+  const s = session, total = s.deck.length, pct = Math.round((s.right.length / total) * 100);
+  const name = x => x.title || x.answer;
+  const prompt = x => x.q ? plain(x.q) : plain(x.prompt);
+  if (s.mode === "test") { const best = store.get("bestTest", 0); if (pct > best) store.set("bestTest", pct); }
+  view.innerHTML = `<div class="results">
+    <div class="sub">${s.mode === "test" ? "Practice test" : s.mode === "learn" ? "Learn round" : "Flashcard round"} complete</div>
+    <div class="big" style="color:${pct >= 80 ? "var(--good)" : pct >= 50 ? "var(--accent)" : "var(--bad)"}">${pct}%</div>
+    <div>${s.right.length} right, ${s.wrong.length} wrong</div>
+    <p class="sub">${pct === 100 ? "Perfect round." : pct >= 80 ? "Strong. Review the ones you missed and go again." : "Keep going: retry just the missed cards until they stick."}</p>
+    ${s.wrong.length ? `<ul class="missed">${s.wrong.map(x => `<li><b>${name(x)}</b><br><span>${prompt(x).slice(0, 140)}</span></li>`).join("")}</ul>` : ""}
+    <div class="row">
+      ${s.wrong.length && s.mode !== "test" ? `<button class="btn bad" id="retry">Retry ${s.wrong.length} missed</button>` : ""}
+      <button class="btn primary" id="again">Start over</button>
+    </div></div>`;
+  $("#again").onclick = () => start();
+  const r = $("#retry");
+  if (r) r.onclick = () => start(shuffle(s.wrong.map(x => x.card || x)));
+}
+
+function renderPlan() {
+  const done = store.get("plan", {});
+  const seen = Object.keys(stats).length;
+  const tot = Object.values(stats).reduce((a, s) => [a[0] + s.r, a[1] + s.w], [0, 0]);
+  const acc = tot[0] + tot[1] ? Math.round(tot[0] / (tot[0] + tot[1]) * 100) + "%" : "-";
+  const weak = cards.filter(c => stats[c.id] && stats[c.id].w > 0).sort((a, b) => (stats[b.id].w - stats[b.id].r) - (stats[a.id].w - stats[a.id].r)).slice(0, 5);
+  view.innerHTML = `
+    <div class="stats">
+      <div class="stat"><b>${seen}/24</b><span>cards studied</span></div>
+      <div class="stat"><b>${acc}</b><span>overall accuracy</span></div>
+      <div class="stat"><b>${Object.values(done).filter(Boolean).length}/15</b><span>days done</span></div>
+      <div class="stat"><b>${store.get("bestTest", 0)}%</b><span>best test score</span></div>
+    </div>
+    ${weak.length ? `<p><b>Weakest cards:</b> ${weak.map(c => `${c.title} (#${c.id})`).join(", ")}. <button class="link" id="drill">Drill these</button></p>` : ""}
+    <table><thead><tr><th>Day</th><th>Task</th><th>Cards</th><th>Done</th><th></th></tr></thead><tbody>
+    ${SCHEDULE.map(([d, t, sets]) => `<tr class="${done[d] ? "done" : ""}"><td><b>${d}</b></td><td>${t}</td><td>${sets.length * 6}</td>
+      <td><input type="checkbox" data-day="${d}" ${done[d] ? "checked" : ""} aria-label="Day ${d} done"></td>
+      <td><button class="link" data-study="${sets}">Study</button></td></tr>`).join("")}
+    </tbody></table>
+    <ul class="tips">
+      <li>Each set is reviewed 1, 3, 7 and 14 days after you learn it.</li>
+      <li><b>Answer first.</b> Say your answer before flipping. Recalling is what builds memory.</li>
+      <li><b>Missed cards restart.</b> If you get one wrong, treat it as new and restart its intervals.</li>
+      <li>Most days are 6-12 cards (10-15 min). Day 4 is the heavy one at 18 cards.</li>
+      <li>Check cards 15, 20 and 21 against your course materials.</li>
+    </ul>
+    <p><button class="link" id="reset">Reset all progress</button></p>`;
+  view.querySelectorAll("[data-day]").forEach(b => b.onchange = () => { done[b.dataset.day] = b.checked; store.set("plan", done); renderPlan(); });
+  view.querySelectorAll("[data-study]").forEach(b => b.onclick = () => { picked = new Set(b.dataset.study); store.set("sets", [...picked]); tab = "cards"; store.set("tab", tab); start(); });
+  const dr = $("#drill"); if (dr) dr.onclick = () => { tab = "learn"; start(shuffle(weak)); };
+  $("#reset").onclick = () => { if (confirm("Clear your scores and ticked days?")) { stats = {}; store.set("stats", {}); store.set("plan", {}); store.set("bestTest", 0); renderPlan(); } };
+}
+
+document.addEventListener("keydown", e => {
+  const s = session; if (!s || e.target.matches("input")) return;
+  if (s.mode === "cards" && s.i < s.deck.length) {
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); }
+    else if (s.flipped && e.key === "1") grade(false);
+    else if (s.flipped && e.key === "2") grade(true);
+  } else if ((s.mode === "learn" || s.mode === "test") && s.i < s.deck.length) {
+    const q = s.deck[s.i];
+    if (!s.answered && /^[1-4]$/.test(e.key) && q.opts[+e.key - 1]) choose(q.opts[+e.key - 1]);
+    else if (s.answered && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); next(); }
+  }
+});
+
+start();
+</script>
+</body>
+</html>
