@@ -126,6 +126,16 @@
         "rewards/1790984303183-ssstwitter-com-1790984243003/part004.bin",
         "rewards/1790984303183-ssstwitter-com-1790984243003/part005.bin"
       ]
+    },
+    {
+      "type": "video",
+      "id": "rewards/1790984309310-ssstwitter-com-1790984203347",
+      "mime": "video/mp4",
+      "size": 5884756,
+      "parts": [
+        "rewards/1790984309310-ssstwitter-com-1790984203347/part000.bin",
+        "rewards/1790984309310-ssstwitter-com-1790984203347/part001.bin"
+      ]
     }
   ],
   "punishments": [
