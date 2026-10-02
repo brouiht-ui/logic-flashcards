@@ -32,6 +32,24 @@
       "parts": [
         "rewards/1790981718594-pfg885jmz4aadzai/part000.bin"
       ]
+    },
+    {
+      "type": "video",
+      "id": "rewards/1790981752214-r45m9t4a56xaszmj",
+      "mime": "video/mp4",
+      "size": 38402255,
+      "parts": [
+        "rewards/1790981752214-r45m9t4a56xaszmj/part000.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part001.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part002.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part003.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part004.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part005.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part006.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part007.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part008.bin",
+        "rewards/1790981752214-r45m9t4a56xaszmj/part009.bin"
+      ]
     }
   ]
 }
