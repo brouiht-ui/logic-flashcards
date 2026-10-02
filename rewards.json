@@ -79,6 +79,18 @@
       "parts": [
         "rewards/1790981784677-sibbil30xigkcyqc/part000.bin"
       ]
+    },
+    {
+      "type": "video",
+      "id": "rewards/1790981805010-1ybq973-wrzl7u3o",
+      "mime": "video/mp4",
+      "size": 15363483,
+      "parts": [
+        "rewards/1790981805010-1ybq973-wrzl7u3o/part000.bin",
+        "rewards/1790981805010-1ybq973-wrzl7u3o/part001.bin",
+        "rewards/1790981805010-1ybq973-wrzl7u3o/part002.bin",
+        "rewards/1790981805010-1ybq973-wrzl7u3o/part003.bin"
+      ]
     }
   ]
 }
