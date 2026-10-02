@@ -90,6 +90,18 @@
         "rewards/1790981805010-1ybq973-wrzl7u3o/part002.bin",
         "rewards/1790981805010-1ybq973-wrzl7u3o/part003.bin"
       ]
+    },
+    {
+      "type": "video",
+      "id": "rewards/1790984195411-ssstwitter-com-1790984173084",
+      "mime": "video/mp4",
+      "size": 16497592,
+      "parts": [
+        "rewards/1790984195411-ssstwitter-com-1790984173084/part000.bin",
+        "rewards/1790984195411-ssstwitter-com-1790984173084/part001.bin",
+        "rewards/1790984195411-ssstwitter-com-1790984173084/part002.bin",
+        "rewards/1790984195411-ssstwitter-com-1790984173084/part003.bin"
+      ]
     }
   ],
   "punishments": [
