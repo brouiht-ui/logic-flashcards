@@ -14,6 +14,15 @@
     "rewards/1790980887356-screenshot-2026-10-02-183837.png",
     "rewards/1790981139522-screenshot-2026-10-02-184044.png",
     "rewards/1790981141993-screenshot-2026-10-02-184042.png",
-    "rewards/1790981144399-screenshot-2026-10-02-184034.png"
+    "rewards/1790981144399-screenshot-2026-10-02-184034.png",
+    {
+      "type": "video",
+      "id": "rewards/1790981713681-7ugb-bwdpkrfq8ca",
+      "mime": "video/mp4",
+      "size": 1033277,
+      "parts": [
+        "rewards/1790981713681-7ugb-bwdpkrfq8ca/part000.bin"
+      ]
+    }
   ]
 }
