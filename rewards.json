@@ -23,6 +23,15 @@
       "parts": [
         "rewards/1790981713681-7ugb-bwdpkrfq8ca/part000.bin"
       ]
+    },
+    {
+      "type": "video",
+      "id": "rewards/1790981718594-pfg885jmz4aadzai",
+      "mime": "video/mp4",
+      "size": 3546344,
+      "parts": [
+        "rewards/1790981718594-pfg885jmz4aadzai/part000.bin"
+      ]
     }
   ]
 }
