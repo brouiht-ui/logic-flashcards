@@ -48,24 +48,15 @@ a { color: var(--accent); }
 <body>
 <div class="wrap">
   <h1>Rewards admin</h1>
-  <p class="sub">Pictures shown when someone gets a question right. Changes go live on the site about a minute after you save. <a href="./">Back to the site</a></p>
+  <p class="sub">Pictures shown when someone gets a question right. Changes go live on the site a minute or two after you save. <a href="./">Back to the site</a></p>
 
   <section class="box" id="login">
-    <b>Unlock with your GitHub key</b>
-    <p class="help">This page saves straight to your GitHub repo, so it needs a GitHub access key. The key is kept only in this browser on this device and is only ever sent to GitHub.</p>
-    <div class="row">
-      <input type="password" id="token" placeholder="github_pat_..." autocomplete="off">
+    <b>Admin password</b>
+    <div class="row" style="margin-top:8px">
+      <input type="password" id="token" placeholder="Password" autocomplete="current-password">
       <button class="btn primary" id="saveToken">Unlock</button>
     </div>
-    <details class="help" style="margin-top:10px">
-      <summary>How to get a key (2 minutes)</summary>
-      <ol>
-        <li>On GitHub go to <b>Settings &rarr; Developer settings &rarr; Personal access tokens &rarr; Fine-grained tokens &rarr; Generate new token</b>.</li>
-        <li>Repository access: <b>Only select repositories</b> &rarr; <b>logic-flashcards</b>.</li>
-        <li>Permissions &rarr; Repository permissions &rarr; <b>Contents: Read and write</b>.</li>
-        <li>Generate it, copy it, paste it above. Don't share it with anyone.</li>
-      </ol>
-    </details>
+    <label class="help" style="display:block;margin-top:8px"><input type="checkbox" id="remember"> Remember on this device</label>
   </section>
 
   <div id="panel" hidden>
@@ -77,112 +68,98 @@ a { color: var(--accent); }
     <div class="status" id="status"></div>
     <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
       <b id="count">Rewards</b>
-      <button class="btn" id="logout">Lock (forget key)</button>
+      <button class="btn" id="logout">Lock</button>
     </div>
     <div class="grid" id="grid"></div>
   </div>
 </div>
 
 <script>
-const OWNER = "brouiht-ui", REPO = "logic-flashcards", BRANCH = "main", MANIFEST = "rewards.json", DIR = "rewards";
-const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents/`;
+const FN = "/.netlify/functions/rewards";
 const $ = s => document.querySelector(s);
 
-const keyStore = {
-  get() { try { return localStorage.getItem("logic:ghtoken") || ""; } catch { return ""; } },
-  set(v) { try { v ? localStorage.setItem("logic:ghtoken", v) : localStorage.removeItem("logic:ghtoken"); } catch {} },
+const pwStore = {
+  get() { try { return localStorage.getItem("logic:adminpw") || sessionStorage.getItem("logic:adminpw") || ""; } catch { return ""; } },
+  set(v, remember) {
+    try {
+      localStorage.removeItem("logic:adminpw"); sessionStorage.removeItem("logic:adminpw");
+      if (v) (remember ? localStorage : sessionStorage).setItem("logic:adminpw", v);
+    } catch {}
+  },
 };
-let token = keyStore.get();
-let manifest = { images: [] }, manifestSha = null;
+let password = pwStore.get();
+let images = [];
 
 function status(msg, kind = "") { const el = $("#status"); el.textContent = msg; el.className = "status " + kind; }
 
-async function gh(path, opts = {}) {
-  const res = await fetch(API + path.split("/").map(encodeURIComponent).join("/") + (opts.method ? "" : `?ref=${BRANCH}&t=${Date.now()}`), {
-    ...opts,
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", ...(opts.headers || {}) },
-  });
-  if (res.status === 404 && !opts.method) return null;
-  if (!res.ok) {
-    let msg = res.status === 401 ? "GitHub rejected the key. Check it was copied fully and hasn't expired."
-      : res.status === 403 ? "The key doesn't have permission. It needs Contents: Read and write on logic-flashcards."
-      : `GitHub error ${res.status}`;
-    try { const j = await res.json(); if (res.status !== 401 && res.status !== 403 && j.message) msg += `: ${j.message}`; } catch {}
-    throw new Error(msg);
-  }
-  return res.status === 204 ? {} : res.json();
-}
-
-const b64 = str => btoa(unescape(encodeURIComponent(str)));
-const unb64 = str => decodeURIComponent(escape(atob(str.replace(/\n/g, ""))));
-const rawUrl = path => `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path.split("/").map(encodeURIComponent).join("/")}?t=${Date.now()}`;
-
-async function loadManifest() {
-  const f = await gh(MANIFEST);
-  if (f) { manifest = JSON.parse(unb64(f.content)); manifestSha = f.sha; }
-  else { manifest = { images: [] }; manifestSha = null; }
-  if (!Array.isArray(manifest.images)) manifest.images = [];
-}
-
-async function saveManifest(message) {
-  const body = { message, branch: BRANCH, content: b64(JSON.stringify(manifest, null, 2) + "\n") };
-  if (manifestSha) body.sha = manifestSha;
-  const r = await gh(MANIFEST, { method: "PUT", body: JSON.stringify(body) });
-  manifestSha = r.content.sha;
+async function call(action, extra = {}) {
+  let res;
+  try {
+    res = await fetch(FN, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password, action, ...extra }) });
+  } catch { throw new Error("Couldn't reach the server. Check your connection."); }
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (res.status === 404 && !data.error) throw new Error("The admin server isn't set up on this site. It only works on the Netlify site connected to GitHub.");
+  if (!res.ok) { const e = new Error(data.error || `Server error ${res.status}`); e.status = res.status; throw e; }
+  return data;
 }
 
 function renderGrid() {
-  const n = manifest.images.length;
+  const n = images.length;
   $("#count").textContent = n ? `${n} reward${n === 1 ? "" : "s"}` : "No rewards yet. Drop some pictures above.";
-  $("#grid").innerHTML = manifest.images.map((p, i) => `
+  $("#grid").innerHTML = images.map((im, i) => `
     <div class="tile">
-      <img src="${rawUrl(p)}" alt="" loading="lazy">
-      <span>${p.replace(/</g, "&lt;")}</span>
+      <img src="${im.url}?t=${Date.now()}" alt="" loading="lazy">
+      <span>${im.path.replace(/</g, "&lt;")}</span>
       <button class="btn bad" data-del="${i}">Remove</button>
     </div>`).join("");
 }
 
+async function refresh() { images = (await call("list")).images; renderGrid(); }
+
 async function unlock() {
-  status("Connecting to GitHub...");
+  $("#saveToken").disabled = true;
   try {
-    await loadManifest();
-    $("#login").hidden = true; $("#panel").hidden = false;
-    renderGrid(); status("");
+    await refresh();
+    $("#login").hidden = true; $("#panel").hidden = false; status("");
   } catch (e) {
+    if (e.status === 401) { password = ""; pwStore.set(""); }
     $("#login").hidden = false; $("#panel").hidden = true;
     alert(e.message);
-    status("");
-  }
+  } finally { $("#saveToken").disabled = false; }
 }
 
-const readB64 = file => new Promise((ok, bad) => {
-  const r = new FileReader();
-  r.onload = () => ok(String(r.result).split(",")[1]);
-  r.onerror = () => bad(r.error);
-  r.readAsDataURL(file);
-});
+// Shrink big photos so uploads stay under Netlify's 6 MB request limit (GIFs are kept as-is to keep animation)
+const MAX_B64 = 5.5 * 1024 * 1024;
+const fileB64 = blob => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = () => bad(r.error); r.readAsDataURL(blob); });
+async function prepare(file) {
+  if (file.type === "image/gif") {
+    const data = await fileB64(file);
+    if (data.length > MAX_B64) throw new Error(`${file.name} is too big. GIFs need to be under about 4 MB.`);
+    return { name: file.name, data };
+  }
+  const img = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+  if (scale === 1 && file.size < 1.5 * 1024 * 1024) return { name: file.name, data: await fileB64(file) };
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.88));
+  return { name: file.name.replace(/\.[^.]+$/, "") + ".jpg", data: await fileB64(blob) };
+}
 
 let busy = false;
 async function upload(files) {
   files = [...files].filter(f => f.type.startsWith("image/"));
   if (!files.length || busy) return;
-  const big = files.find(f => f.size > 20 * 1024 * 1024);
-  if (big) return status(`${big.name} is over 20 MB. Use a smaller picture.`, "err");
   busy = true;
   try {
-    await loadManifest(); // pick up changes made from another tab or device
     for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      status(`Uploading ${i + 1} of ${files.length}: ${f.name}...`);
-      const ext = (f.name.match(/\.[a-z0-9]+$/i) || [".png"])[0].toLowerCase();
-      const base = f.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "reward";
-      const path = `${DIR}/${Date.now()}-${base}${ext}`;
-      await gh(path, { method: "PUT", body: JSON.stringify({ message: `Add reward ${path}`, branch: BRANCH, content: await readB64(f) }) });
-      manifest.images.push(path);
+      status(`Uploading ${i + 1} of ${files.length}: ${files[i].name}...`);
+      await call("add", await prepare(files[i]));
     }
-    await saveManifest(`Add ${files.length} reward picture${files.length === 1 ? "" : "s"}`);
-    renderGrid();
-    status(`Added ${files.length}. Live on the site in about a minute.`, "ok");
+    await refresh();
+    status(`Added ${files.length}. Live on the site in a minute or two.`, "ok");
   } catch (e) {
     status(e.message, "err");
   } finally { busy = false; }
@@ -190,26 +167,22 @@ async function upload(files) {
 
 async function remove(i) {
   if (busy) return;
-  const path = manifest.images[i];
+  const path = images[i].path;
   if (!confirm(`Remove ${path} from the rewards?`)) return;
   busy = true;
   try {
     status(`Removing ${path}...`);
-    await loadManifest();
-    manifest.images = manifest.images.filter(p => p !== path);
-    await saveManifest(`Remove reward ${path}`);
-    const f = await gh(path);
-    if (f) await gh(path, { method: "DELETE", body: JSON.stringify({ message: `Delete reward ${path}`, branch: BRANCH, sha: f.sha }) });
-    renderGrid();
-    status("Removed. The site updates in about a minute.", "ok");
+    await call("remove", { path });
+    await refresh();
+    status("Removed. The site updates in a minute or two.", "ok");
   } catch (e) {
     status(e.message, "err");
   } finally { busy = false; }
 }
 
-$("#saveToken").onclick = () => { token = $("#token").value.trim(); if (!token) return; keyStore.set(token); $("#token").value = ""; unlock(); };
+$("#saveToken").onclick = () => { password = $("#token").value; if (!password) return; pwStore.set(password, $("#remember").checked); $("#token").value = ""; unlock(); };
 $("#token").onkeydown = e => { if (e.key === "Enter") $("#saveToken").click(); };
-$("#logout").onclick = () => { token = ""; keyStore.set(""); $("#panel").hidden = true; $("#login").hidden = false; };
+$("#logout").onclick = () => { password = ""; pwStore.set(""); $("#panel").hidden = true; $("#login").hidden = false; };
 $("#grid").onclick = e => { const b = e.target.closest("[data-del]"); if (b) remove(+b.dataset.del); };
 $("#file").onchange = e => { upload(e.target.files); e.target.value = ""; };
 const drop = $("#drop");
@@ -220,7 +193,7 @@ drop.addEventListener("drop", e => upload(e.dataTransfer.files));
 addEventListener("dragover", e => e.preventDefault());
 addEventListener("drop", e => e.preventDefault());
 
-if (token) unlock();
+if (password) unlock();
 </script>
 </body>
 </html>
