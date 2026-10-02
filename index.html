@@ -411,7 +411,7 @@ document.addEventListener("keydown", e => {
 });
 
 // ---- rewards: rewards.json lists the image paths; admin.html edits it ----
-let rewards = [], lastReward = -1, streak = 0;
+let rewards = [], streak = 0;
 fetch("rewards.json?v=" + Date.now()).then(r => r.ok ? r.json() : { images: [] })
   .then(d => { rewards = Array.isArray(d.images) ? d.images : []; })
   .catch(() => {});
@@ -421,17 +421,31 @@ function celebrate() {
   sound(true);
   confetti();
   if (!rewards.length) return;
-  let k = Math.floor(Math.random() * rewards.length);
-  if (rewards.length > 1 && k === lastReward) k = (k + 1) % rewards.length;
-  lastReward = k;
+  const src = nextReward();
   const box = $("#reward"), img = $("#rewardImg"), st = $("#streak");
   img.classList.remove("spin");
-  img.src = rewards[k];
+  img.src = src;
   box.hidden = false;
   void img.offsetWidth; // restart the animation
   img.classList.add("spin");
   st.textContent = streak > 1 ? `\u{1F525} ${streak} in a row` : "";
   st.classList.remove("pop"); void st.offsetWidth; st.classList.add("pop");
+}
+// Shuffle-deck order: every picture shows once before any repeats, remembered across reloads.
+// New uploads are unseen, so they come up within the current round.
+function nextReward() {
+  const seen = store.get("seenRewards", []).filter(p => rewards.includes(p));
+  let unseen = rewards.filter(p => !seen.includes(p)), choices = unseen;
+  if (!unseen.length) {
+    // new round: everything is back in, but don't open it with the picture just shown
+    const last = seen[seen.length - 1];
+    seen.length = 0;
+    choices = rewards.length > 1 ? rewards.filter(p => p !== last) : rewards;
+  }
+  const pick = choices[Math.floor(Math.random() * choices.length)];
+  seen.push(pick);
+  store.set("seenRewards", seen);
+  return pick;
 }
 function miss() {
   streak = 0;
