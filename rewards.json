@@ -50,6 +50,15 @@
         "rewards/1790981752214-r45m9t4a56xaszmj/part008.bin",
         "rewards/1790981752214-r45m9t4a56xaszmj/part009.bin"
       ]
+    },
+    {
+      "type": "video",
+      "id": "rewards/1790981760718-erva3afybueg8wz",
+      "mime": "video/mp4",
+      "size": 4112248,
+      "parts": [
+        "rewards/1790981760718-erva3afybueg8wz/part000.bin"
+      ]
     }
   ]
 }
