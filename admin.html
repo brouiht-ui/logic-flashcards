@@ -37,6 +37,12 @@ input[type=password] { flex: 1; min-width: 200px; padding: 10px 12px; border: 2p
 .tile { background: var(--panel); border: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .tile img { width: 100%; height: 150px; object-fit: cover; background: var(--bg); }
 .tile span { font-size: 12px; color: var(--muted); word-break: break-all; }
+.bucket { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 14px; border: 2px solid var(--line); }
+.bucket button { border: 0; background: var(--panel); padding: 12px; font-weight: 700; cursor: pointer; }
+.bucket button small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.bucket button.on { background: var(--accent); color: var(--accent-ink); }
+.bucket button.on small { color: inherit; opacity: .8; }
+body.punish .bucket button.on, body.punish .btn.primary { background: var(--bad); border-color: var(--bad); color: #fff; }
 .prog { height: 8px; background: var(--line); margin: -6px 0 14px; }
 .prog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 .vid { width: 100%; height: 150px; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-weight: 700; }
@@ -52,7 +58,7 @@ a { color: var(--accent); }
 <body>
 <div class="wrap">
   <h1>Rewards admin</h1>
-  <p class="sub">Pictures shown when someone gets a question right. Changes go live on the site a minute or two after you save. <a href="./">Back to the site</a></p>
+  <p class="sub">Rewards show when someone gets a question right; punishments show when they get one wrong. Changes go live on the site a minute or two after you save. <a href="./">Back to the site</a></p>
 
   <section class="box" id="login">
     <b>Admin password</b>
@@ -64,6 +70,10 @@ a { color: var(--accent); }
   </section>
 
   <div id="panel" hidden>
+    <div class="bucket" id="bucket">
+      <button class="on" data-b="rewards">&#127881; Rewards <small>right answers</small></button>
+      <button data-b="punishments">&#128520; Punishments <small>wrong answers</small></button>
+    </div>
     <label class="drop" id="drop">
       <b>Drop pictures or videos here</b>
       or click to choose files (JPG, PNG, GIF, WebP, MP4, WebM, MOV &middot; videos up to 150 MB)
@@ -93,14 +103,15 @@ const pwStore = {
   },
 };
 let password = pwStore.get();
-let images = [];
+let images = [], bucket = "rewards";
+const bucketName = () => bucket === "punishments" ? "punishment" : "reward";
 
 function status(msg, kind = "") { const el = $("#status"); el.textContent = msg; el.className = "status " + kind; }
 
 async function call(action, extra = {}) {
   let res;
   try {
-    res = await fetch(FN, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password, action, ...extra }) });
+    res = await fetch(FN, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password, action, bucket, ...extra }) });
   } catch { throw new Error("Couldn't reach the server. Check your connection."); }
   let data = {};
   try { data = await res.json(); } catch {}
@@ -113,7 +124,7 @@ const mb = n => (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + " MB";
 
 function renderGrid() {
   const n = images.length;
-  $("#count").textContent = n ? `${n} reward${n === 1 ? "" : "s"}` : "No rewards yet. Drop some pictures or videos above.";
+  $("#count").textContent = n ? `${n} ${bucketName()}${n === 1 ? "" : "s"}` : `No ${bucketName()}s yet. Drop some pictures or videos above.`;
   $("#grid").innerHTML = images.map((im, i) => `
     <div class="tile">
       ${im.type === "video"
@@ -198,7 +209,7 @@ async function upload(files) {
 async function remove(i) {
   if (busy) return;
   const id = images[i].id;
-  if (!confirm(`Remove ${id} from the rewards?`)) return;
+  if (!confirm(`Remove ${id} from the ${bucketName()}s?`)) return;
   busy = true;
   try {
     status(`Removing ${id}...`);
@@ -210,6 +221,16 @@ async function remove(i) {
   } finally { busy = false; }
 }
 
+$("#bucket").onclick = async e => {
+  const b = e.target.closest("[data-b]");
+  if (!b || busy || b.dataset.b === bucket) return;
+  bucket = b.dataset.b;
+  document.querySelectorAll("#bucket button").forEach(x => x.classList.toggle("on", x === b));
+  document.body.classList.toggle("punish", bucket === "punishments");
+  $("#drop b").textContent = bucket === "punishments" ? "Drop punishment pictures or videos here" : "Drop pictures or videos here";
+  images = []; renderGrid(); status("Loading...");
+  try { await refresh(); status(""); } catch (err) { status(err.message, "err"); }
+};
 $("#saveToken").onclick = () => { password = $("#token").value; if (!password) return; pwStore.set(password, $("#remember").checked); $("#token").value = ""; unlock(); };
 $("#token").onkeydown = e => { if (e.key === "Enter") $("#saveToken").click(); };
 $("#logout").onclick = () => { password = ""; pwStore.set(""); $("#panel").hidden = true; $("#login").hidden = false; };

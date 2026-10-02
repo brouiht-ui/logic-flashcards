@@ -5,10 +5,12 @@
 // GitHub blobs without committing), then one "commit" call writes them all plus rewards.json in a single
 // commit, so Netlify redeploys once per upload.
 //
-// rewards.json: { images: [ "path.png", { type: "video", id, mime, parts: [...] }, ... ] }
+// rewards.json: { images: [...], punishments: [...] }, entries are "path.png" or { type: "video", id, mime, parts: [...] }.
+// "images" are rewards for right answers, "punishments" show on wrong answers; requests pick one with bucket.
 import { createHash, timingSafeEqual } from "node:crypto";
 
-const OWNER = "brouiht-ui", REPO = "logic-flashcards", BRANCH = "main", MANIFEST = "rewards.json", DIR = "rewards";
+const OWNER = "brouiht-ui", REPO = "logic-flashcards", BRANCH = "main", MANIFEST = "rewards.json";
+const BUCKETS = { rewards: { key: "images", dir: "rewards" }, punishments: { key: "punishments", dir: "punishments" } };
 const BASE = `https://api.github.com/repos/${OWNER}/${REPO}`;
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -42,7 +44,7 @@ async function gh(path, opts = {}) {
 async function readManifest(ref = BRANCH) {
   const f = await gh(`/contents/${MANIFEST}?ref=${ref}`, { allow404: true });
   const data = f ? JSON.parse(Buffer.from(f.content, "base64").toString("utf8")) : { images: [] };
-  if (!Array.isArray(data.images)) data.images = [];
+  for (const b of Object.values(BUCKETS)) if (!Array.isArray(data[b.key])) data[b.key] = [];
   return data;
 }
 
@@ -88,11 +90,12 @@ export default async req => {
   }
   if (!process.env.GITHUB_TOKEN) return json({ error: "GITHUB_TOKEN is not set in Netlify" }, 500);
 
+  const bucket = BUCKETS[body.bucket] || BUCKETS.rewards, KEY = bucket.key, DIR = bucket.dir;
   try {
     if (body.action === "list") {
       const data = await readManifest();
       return json({
-        images: data.images.map(e => typeof e === "string"
+        images: data[KEY].map(e => typeof e === "string"
           ? { type: "image", id: e, url: rawUrl(e) }
           : { type: "video", id: e.id, mime: e.mime, parts: e.parts.length, size: e.size || null }),
       });
@@ -124,7 +127,7 @@ export default async req => {
       }
       await commit(`Add reward ${entryId(entry)}`,
         () => files.map(f => ({ path: f.path, mode: "100644", type: "blob", sha: f.sha })),
-        m => { m.images.push(entry); });
+        m => { m[KEY].push(entry); });
       return json({ ok: true, id: entryId(entry) });
     }
 
@@ -134,11 +137,11 @@ export default async req => {
       await commit(`Remove reward ${id}`,
         m => gone ? entryPaths(gone).map(path => ({ path, mode: "100644", type: "blob", sha: null })) : [],
         m => {
-          gone = m.images.find(e => entryId(e) === id) || null;
+          gone = m[KEY].find(e => entryId(e) === id) || null;
           if (!gone) return false;
-          m.images = m.images.filter(e => entryId(e) !== id);
+          m[KEY] = m[KEY].filter(e => entryId(e) !== id);
         });
-      return gone ? json({ ok: true }) : json({ error: "Not in the rewards list" }, 404);
+      return gone ? json({ ok: true }) : json({ error: "Not in this list" }, 404);
     }
 
     return json({ error: "Unknown action" }, 400);

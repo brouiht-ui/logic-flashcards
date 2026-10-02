@@ -118,6 +118,15 @@ tr.done td { color: var(--muted); text-decoration: line-through; }
 .reward [hidden] { display: none; }
 .reward .loading { padding: 40px 0; color: var(--muted); font-weight: 600; }
 .reward img.spin, .reward video.spin { animation: spinIn .9s cubic-bezier(.2,.9,.3,1.2) both; }
+.reward img.slam, .reward video.slam { animation: slamIn .6s cubic-bezier(.3,1.4,.5,1) both; }
+.reward[data-kind="punish"] { border: 2px solid var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--panel)); }
+.reward[data-kind="punish"] .streak { color: var(--bad); }
+@keyframes slamIn {
+  0% { transform: scale(2.4) rotate(-10deg); opacity: 0; }
+  55% { transform: scale(.94) rotate(3deg); opacity: 1; }
+  70% { transform: translateX(-8px); } 85% { transform: translateX(8px); }
+  100% { transform: none; }
+}
 .reward .x { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border: 1px solid var(--line); background: var(--panel); font-size: 18px; line-height: 1; }
 .reward .streak { position: absolute; top: 8px; left: 10px; z-index: 2; font-weight: 800; font-size: 14px; color: var(--accent); }
 .reward .streak.pop { animation: pop .5s ease-out; }
@@ -131,7 +140,7 @@ tr.done td { color: var(--muted); text-decoration: line-through; }
 .shake { animation: shake .35s; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 .mute { background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { .reward img.spin, .reward video.spin, .shake, .reward .streak.pop { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .reward img.spin, .reward video.spin, .reward img.slam, .reward video.slam, .shake, .reward .streak.pop { animation: none; } }
 </style>
 </head>
 <body>
@@ -415,16 +424,27 @@ document.addEventListener("keydown", e => {
   }
 });
 
-// ---- rewards: rewards.json lists pictures (paths) and videos ({ type: "video", id, mime, parts }); admin.html edits it ----
-let rewards = [], streak = 0, upcoming = null, showing = 0;
+// ---- rewards (right answers) and punishments (wrong answers) ----
+// rewards.json: { images: [...], punishments: [...] }; each entry is a picture path or { type: "video", id, mime, parts }.
+// admin.html edits it.
+let streak = 0, showing = 0;
+const pools = {
+  reward: { items: [], seenKey: "seenRewards", upcoming: null },
+  punish: { items: [], seenKey: "seenPunish", upcoming: null },
+};
 const rewardKey = e => typeof e === "string" ? e : e.id;
 const isVideo = e => e && typeof e === "object" && e.type === "video";
-fetch("rewards.json?v=" + Date.now()).then(r => r.ok ? r.json() : { images: [] })
-  .then(d => { rewards = Array.isArray(d.images) ? d.images.filter(e => typeof e === "string" || (isVideo(e) && Array.isArray(e.parts))) : []; queueNext(); })
+const validEntries = list => Array.isArray(list) ? list.filter(e => typeof e === "string" || (isVideo(e) && Array.isArray(e.parts))) : [];
+fetch("rewards.json?v=" + Date.now()).then(r => r.ok ? r.json() : {})
+  .then(d => {
+    pools.reward.items = validEntries(d.images);
+    pools.punish.items = validEntries(d.punishments);
+    queueNext(pools.reward); queueNext(pools.punish);
+  })
   .catch(() => {});
 
 // Videos are stored in 4 MB pieces; fetch them all and join them into one playable file.
-// Keeps the last few in memory so the queued-up next reward is ready instantly.
+// Keeps the last few in memory so the queued-up next one is ready instantly.
 const videoCache = new Map();
 function loadVideo(e) {
   if (!videoCache.has(e.id)) {
@@ -432,7 +452,7 @@ function loadVideo(e) {
       .then(blobs => URL.createObjectURL(new Blob(blobs, { type: e.mime || "video/mp4" })));
     p.catch(() => videoCache.delete(e.id));
     videoCache.set(e.id, p);
-    while (videoCache.size > 3) {
+    while (videoCache.size > 4) {
       const [oldId, oldP] = videoCache.entries().next().value;
       videoCache.delete(oldId);
       oldP.then(url => { if ($("#rewardVid").src !== url) URL.revokeObjectURL(url); }).catch(() => {});
@@ -445,26 +465,42 @@ function preload(e) {
   if (isVideo(e)) loadVideo(e).catch(() => {});
   else new Image().src = e;
 }
-function queueNext() { upcoming = rewards.length ? nextReward() : null; preload(upcoming); }
+function queueNext(pool) { pool.upcoming = pool.items.length ? nextFrom(pool) : null; preload(pool.upcoming); }
 
-async function celebrate() {
-  streak++;
-  sound(true);
-  confetti();
-  const st = $("#streak");
-  st.textContent = streak > 1 ? `\u{1F525} ${streak} in a row` : "";
-  st.classList.remove("pop"); void st.offsetWidth; st.classList.add("pop");
-  if (!rewards.length) return;
-  const keys = rewards.map(rewardKey);
-  const entry = upcoming && keys.includes(rewardKey(upcoming)) ? upcoming : nextReward();
-  queueNext();
-  const box = $("#reward"), img = $("#rewardImg"), vid = $("#rewardVid"), loading = $("#rewardLoading");
-  const ticket = ++showing; // a newer right answer wins if this one is still loading
+// Shuffle-deck order: everything in a pool shows once before any repeats, remembered across reloads.
+// New uploads are unseen, so they come up within the current round.
+function nextFrom(pool) {
+  const keys = pool.items.map(rewardKey);
+  const seen = store.get(pool.seenKey, []).filter(k => keys.includes(k));
+  let choices = keys.filter(k => !seen.includes(k));
+  if (!choices.length) {
+    // new round: everything is back in, but don't open it with the one just shown
+    const last = seen[seen.length - 1];
+    seen.length = 0;
+    choices = keys.length > 1 ? keys.filter(k => k !== last) : keys;
+  }
+  const pick = choices[Math.floor(Math.random() * choices.length)];
+  seen.push(pick);
+  store.set(pool.seenKey, seen);
+  return pool.items[keys.indexOf(pick)];
+}
+
+// Shows the next reward or punishment in the panel; it stays (videos keep looping) until the next one replaces it.
+async function showMedia(kind, label) {
+  const pool = pools[kind];
+  if (!pool.items.length) return;
+  const keys = pool.items.map(rewardKey);
+  const entry = pool.upcoming && keys.includes(rewardKey(pool.upcoming)) ? pool.upcoming : nextFrom(pool);
+  queueNext(pool);
+  const box = $("#reward"), img = $("#rewardImg"), vid = $("#rewardVid"), loading = $("#rewardLoading"), st = $("#streak");
+  const ticket = ++showing; // whatever was answered last wins if an earlier one is still loading
+  box.dataset.kind = kind;
   box.hidden = false;
+  st.textContent = label;
   vid.pause();
   let el;
   if (isVideo(entry)) {
-    img.hidden = true; vid.hidden = true; loading.hidden = false;
+    img.hidden = true; vid.hidden = true; loading.hidden = false; loading.textContent = "Loading video\u2026";
     let url;
     try { url = await loadVideo(entry); } catch { if (ticket === showing) loading.textContent = "Couldn't load this video."; return; }
     if (ticket !== showing) return;
@@ -479,39 +515,46 @@ async function celebrate() {
     img.src = entry;
     el = img;
   }
-  el.classList.remove("spin");
+  el.classList.remove("spin", "slam");
   void el.offsetWidth; // restart the animation
-  el.classList.add("spin");
+  el.classList.add(kind === "punish" ? "slam" : "spin");
 }
-// Shuffle-deck order: every reward shows once before any repeats, remembered across reloads.
-// New uploads are unseen, so they come up within the current round.
-function nextReward() {
-  const keys = rewards.map(rewardKey);
-  const seen = store.get("seenRewards", []).filter(k => keys.includes(k));
-  let choices = keys.filter(k => !seen.includes(k));
-  if (!choices.length) {
-    // new round: everything is back in, but don't open it with the one just shown
-    const last = seen[seen.length - 1];
-    seen.length = 0;
-    choices = keys.length > 1 ? keys.filter(k => k !== last) : keys;
-  }
-  const pick = choices[Math.floor(Math.random() * choices.length)];
-  seen.push(pick);
-  store.set("seenRewards", seen);
-  return rewards[keys.indexOf(pick)];
+
+function celebrate() {
+  streak++;
+  sound(true);
+  confetti();
+  const st = $("#streak");
+  const label = streak > 1 ? `\u{1F525} ${streak} in a row` : "";
+  if (pools.reward.items.length) showMedia("reward", label);
+  else if ($("#reward").dataset.kind !== "punish") st.textContent = label;
+  st.classList.remove("pop"); void st.offsetWidth; st.classList.add("pop");
 }
 function miss() {
   streak = 0;
-  $("#streak").textContent = "";
   sound(false);
   const el = $("#card") || $("#opts");
   if (el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+  if (pools.punish.items.length) showMedia("punish", "\u{1F608} Punishment");
+  else if ($("#reward").dataset.kind !== "punish") $("#streak").textContent = "";
 }
 $("#rewardClose").onclick = () => { $("#reward").hidden = true; $("#rewardVid").pause(); };
 
 let muted = store.get("muted", false), actx = null;
-function renderMute() { $("#mute").textContent = muted ? "\u{1F507} Sound off" : "\u{1F50A} Sound on"; }
-$("#mute").onclick = () => { muted = !muted; store.set("muted", muted); renderMute(); };
+// Hard mute: silences effects and videos, and keeps videos silent even if their own volume control is used
+function renderMute() {
+  const b = $("#mute");
+  b.textContent = muted ? "\u{1F507} Muted" : "\u{1F50A} Sound on";
+  b.title = muted ? "Everything is muted, including videos. Click to turn sound on." : "Click to mute everything, including videos.";
+  b.setAttribute("aria-pressed", muted);
+}
+$("#mute").onclick = () => {
+  muted = !muted; store.set("muted", muted); renderMute();
+  const vid = $("#rewardVid");
+  vid.muted = muted;
+  if (!muted && !vid.hidden && vid.paused && vid.src) vid.play().catch(() => {});
+};
+$("#rewardVid").addEventListener("volumechange", e => { if (muted && !e.target.muted) e.target.muted = true; });
 renderMute();
 function sound(ok) {
   if (muted) return;
