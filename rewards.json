@@ -136,6 +136,18 @@
         "rewards/1790984309310-ssstwitter-com-1790984203347/part000.bin",
         "rewards/1790984309310-ssstwitter-com-1790984203347/part001.bin"
       ]
+    },
+    {
+      "type": "video",
+      "id": "rewards/1790984323260-ssstwitter-com-1790984173084",
+      "mime": "video/mp4",
+      "size": 16497592,
+      "parts": [
+        "rewards/1790984323260-ssstwitter-com-1790984173084/part000.bin",
+        "rewards/1790984323260-ssstwitter-com-1790984173084/part001.bin",
+        "rewards/1790984323260-ssstwitter-com-1790984173084/part002.bin",
+        "rewards/1790984323260-ssstwitter-com-1790984173084/part003.bin"
+      ]
     }
   ],
   "punishments": [
