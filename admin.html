@@ -4,48 +4,51 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Rewards Admin</title>
+<title>Media Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #f6f7fb; --panel: #ffffff; --ink: #1d2433; --muted: #646f86; --line: #dfe3ee;
-  --accent: #4255ff; --accent-ink: #ffffff; --good: #18a26b; --bad: #e0483e; --soft: #eef0ff;
+  --bg: #f4f1ea; --panel: #fffdf8; --ink: #1c1b18; --muted: #7a766c; --line: #c9c2b2; --rule: #ddd7ca;
+  --accent: #1c1b18; --accent-ink: #fffdf8; --good: #2f6b3f; --bad: #a3322a; --soft: #e6eaf2;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1424; --panel: #1a2033; --ink: #eef1f8; --muted: #9aa3ba; --line: #2c3450;
-    --accent: #7b88ff; --accent-ink: #0f1424; --good: #3ccf92; --bad: #ff6b61; --soft: #232b48;
+    --bg: #171613; --panel: #201f1b; --ink: #ece7dc; --muted: #8f897c; --line: #45413a; --rule: #33302a;
+    --accent: #ece7dc; --accent-ink: #171613; --good: #8cc59a; --bad: #e59286; --soft: #252b38;
   }
 }
 * { box-sizing: border-box; border-radius: 0; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 "IBM Plex Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 button, input { font: inherit; color: inherit; }
-.wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
-h1 { font-size: 22px; margin: 0 0 2px; }
-.sub { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+.wrap { max-width: 860px; --mono: "IBM Plex Mono", ui-monospace, monospace; margin: 0 auto; padding: 20px 16px 60px; }
+h1 { font: 500 32px/1.1 "Newsreader", Georgia, serif; margin: 0 0 8px; padding-top: 12px; }
+.sub { color: var(--muted); font-size: 14.5px; margin: 0 0 22px; padding-bottom: 18px; border-bottom: 1px solid var(--ink); }
 .box { background: var(--panel); border: 1px solid var(--line); padding: 16px; margin-bottom: 16px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
-input[type=password] { flex: 1; min-width: 200px; padding: 10px 12px; border: 2px solid var(--line); background: var(--bg); }
-.btn { border: 2px solid var(--line); background: var(--panel); padding: 10px 14px; font-weight: 700; cursor: pointer; }
+input[type=password] { flex: 1; min-width: 200px; padding: 10px 12px; border: 1px solid var(--line); background: var(--bg); }
+.btn { border: 1px solid var(--line); background: var(--panel); padding: 10px 14px; font-weight: 700; cursor: pointer; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.bad { border-color: var(--bad); color: var(--bad); }
 .btn:disabled { opacity: .5; cursor: default; }
-.drop { border: 3px dashed var(--line); padding: 34px 16px; text-align: center; color: var(--muted); cursor: pointer; background: var(--panel); margin-bottom: 16px; }
+.drop { display: block; border: 1.5px dashed var(--line); padding: 34px 16px; text-align: center; color: var(--muted); cursor: pointer; background: var(--panel); margin-bottom: 16px; }
 .drop.over { border-color: var(--accent); background: var(--soft); color: var(--accent); }
-.drop b { display: block; font-size: 18px; color: var(--ink); }
+.drop b { display: block; font: 500 20px "Newsreader", Georgia, serif; color: var(--ink); margin-bottom: 4px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-.tile { background: var(--panel); border: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.tile { background: var(--panel); border: 1px solid var(--rule); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .tile img { width: 100%; height: 150px; object-fit: cover; background: var(--bg); }
-.tile span { font-size: 12px; color: var(--muted); word-break: break-all; }
-.bucket { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 14px; border: 2px solid var(--line); }
-.bucket button { border: 0; background: var(--panel); padding: 12px; font-weight: 700; cursor: pointer; }
+.tile span { font: 11.5px var(--mono); color: var(--muted); word-break: break-all; }
+.bucket { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 16px; border: 1px solid var(--line); }
+.bucket button { border: 0; border-right: 1px solid var(--line); font-size: 15px; background: var(--panel); padding: 12px; font-weight: 700; cursor: pointer; }
 .bucket button small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
 .bucket button.on { background: var(--accent); color: var(--accent-ink); }
 .bucket button.on small { color: inherit; opacity: .8; }
 body.punish .bucket button.on, body.punish .btn.primary { background: var(--bad); border-color: var(--bad); color: #fff; }
 .prog { height: 8px; background: var(--line); margin: -6px 0 14px; }
 .prog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
-.vid { width: 100%; height: 150px; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-weight: 700; }
+.vid { width: 100%; height: 150px; background: #1c1b18; color: #ece7dc; font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-weight: 700; }
 .vid small { font-weight: 400; opacity: .7; }
 .status { min-height: 1.5em; font-size: 14px; margin: 8px 0 14px; }
 .status.err { color: var(--bad); } .status.ok { color: var(--good); }
@@ -57,7 +60,7 @@ a { color: var(--accent); }
 </head>
 <body>
 <div class="wrap">
-  <h1>Rewards admin</h1>
+  <h1>Media library</h1>
   <p class="sub">Rewards show when someone gets a question right; punishments show when they get one wrong. Changes go live on the site a minute or two after you save. <a href="./">Back to the site</a></p>
 
   <section class="box" id="login">
@@ -71,8 +74,8 @@ a { color: var(--accent); }
 
   <div id="panel" hidden>
     <div class="bucket" id="bucket">
-      <button class="on" data-b="rewards">&#127881; Rewards <small>right answers</small></button>
-      <button data-b="punishments">&#128520; Punishments <small>wrong answers</small></button>
+      <button class="on" data-b="rewards">Rewards <small>Shown on right answers</small></button>
+      <button data-b="punishments">Punishments <small>Shown on wrong answers</small></button>
     </div>
     <label class="drop" id="drop">
       <b>Drop pictures or videos here</b>
@@ -128,7 +131,7 @@ function renderGrid() {
   $("#grid").innerHTML = images.map((im, i) => `
     <div class="tile">
       ${im.type === "video"
-        ? `<div class="vid">&#127916; Video<small>${im.size ? mb(im.size) : `${im.parts} piece${im.parts === 1 ? "" : "s"}`}</small></div>`
+        ? `<div class="vid">Video<small>${im.size ? mb(im.size) : `${im.parts} piece${im.parts === 1 ? "" : "s"}`}</small></div>`
         : `<img src="${im.url}?t=${Date.now()}" alt="" loading="lazy">`}
       <span>${im.id.replace(/</g, "&lt;")}</span>
       <button class="btn bad" data-del="${i}">Remove</button>

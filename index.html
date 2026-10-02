@@ -5,149 +5,201 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Logic Flashcards</title>
 <meta name="description" content="Flashcards, a learn mode and a practice test for arguments, logic and fallacies.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* Course-reader look: paper, ink, index cards. One accent (ink blue); green/red only for right/wrong. */
 :root {
-  --bg: #f6f7fb; --panel: #ffffff; --ink: #1d2433; --muted: #646f86; --line: #dfe3ee;
-  --accent: #4255ff; --accent-ink: #ffffff; --good: #18a26b; --bad: #e0483e; --soft: #eef0ff;
-  --A: #2f5d8a; --B: #7a3f8a; --C: #a2552a; --D: #2e7a4f;
+  --paper: #f4f1ea; --card: #fffdf8; --ink: #1c1b18; --ink-2: #4a4740; --muted: #7a766c; --rule: #ddd7ca; --rule-2: #c9c2b2;
+  --accent: #23407a; --accent-ink: #fffdf8; --accent-soft: #e6eaf2;
+  --good: #2f6b3f; --good-soft: #e5efe4; --bad: #a3322a; --bad-soft: #f5e3df;
+  --margin: #d9a3a0;
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --shadow: 0 1px 0 rgba(28,27,24,.04), 0 6px 18px -8px rgba(28,27,24,.18);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1424; --panel: #1a2033; --ink: #eef1f8; --muted: #9aa3ba; --line: #2c3450;
-    --accent: #7b88ff; --accent-ink: #0f1424; --good: #3ccf92; --bad: #ff6b61; --soft: #232b48;
-    --A: #6fa0d0; --B: #c48ad4; --C: #e09461; --D: #6cc796;
+    --paper: #171613; --card: #201f1b; --ink: #ece7dc; --ink-2: #c4beb1; --muted: #8f897c; --rule: #33302a; --rule-2: #45413a;
+    --accent: #9db4e3; --accent-ink: #171613; --accent-soft: #252b38;
+    --good: #8cc59a; --good-soft: #1f2a21; --bad: #e59286; --bad-soft: #2f1f1c;
+    --margin: #6b3c3a;
+    --shadow: 0 1px 0 rgba(0,0,0,.2), 0 8px 20px -10px rgba(0,0,0,.6);
   }
 }
 * { box-sizing: border-box; border-radius: 0; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { background: var(--paper); color: var(--ink); font: 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; cursor: pointer; }
-.wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 72px; }
+
+/* masthead */
+header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--ink); }
+.eyebrow { font: 500 11.5px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+h1 { font: 500 clamp(28px, 5vw, 38px)/1.08 var(--serif); letter-spacing: -.012em; margin: 0; }
 .sub { color: var(--muted); font-size: 14px; }
+.mute { display: inline-flex; align-items: center; gap: 7px; background: none; border: 1px solid var(--rule-2); padding: 6px 10px; font: 500 12px/1 var(--mono); letter-spacing: .04em; color: var(--ink-2); white-space: nowrap; }
+.mute:hover { border-color: var(--ink-2); }
+.mute svg { width: 15px; height: 15px; }
+.mute[aria-pressed="true"] { color: var(--bad); border-color: var(--bad); }
 
-nav.tabs { display: flex; gap: 0; margin: 18px 0 14px; border-bottom: 2px solid var(--line); overflow-x: auto; }
-nav.tabs button { background: none; border: 0; padding: 10px 16px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
-nav.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+nav.tabs { display: flex; gap: 26px; margin: 0 0 22px; border-bottom: 1px solid var(--rule); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+nav.tabs button { background: none; border: 0; padding: 14px 0 12px; font-weight: 500; font-size: 15px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+nav.tabs button:hover { color: var(--ink); }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
 
-.sets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.chip { border: 2px solid var(--line); background: var(--panel); padding: 6px 12px; font-size: 14px; font-weight: 600; }
-.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--soft); color: var(--accent); }
-.chip .dot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: 1px; }
+/* set picker */
+.sets { display: flex; flex-wrap: wrap; margin-bottom: 26px; border: 1px solid var(--rule-2); width: fit-content; max-width: 100%; }
+.chip { display: flex; align-items: baseline; gap: 8px; border: 0; border-right: 1px solid var(--rule-2); background: var(--card); padding: 8px 14px; font-size: 13.5px; color: var(--ink-2); }
+.chip:last-child { border-right: 0; }
+.chip b { font: 500 12px var(--mono); color: var(--muted); }
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chip[aria-pressed="true"] b { color: inherit; opacity: .7; }
 
-.bar { height: 6px; background: var(--line); margin: 6px 0 14px; }
-.bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .25s; }
-.meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; gap: 10px; flex-wrap: wrap; }
-.score { font-weight: 600; }
+/* progress */
+.meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font: 400 12.5px var(--mono); letter-spacing: .03em; color: var(--muted); }
 .score .g { color: var(--good); } .score .b { color: var(--bad); }
+.bar { height: 2px; background: var(--rule); margin: 10px 0 22px; }
+.bar > i { display: block; height: 100%; background: var(--ink); width: 0; transition: width .3s ease; }
 
-/* flashcard */
-.scene { perspective: 1400px; margin: 4px 0 16px; }
-.card { position: relative; width: 100%; min-height: 340px; transform-style: preserve-3d; transition: transform .45s; cursor: pointer; }
+/* index card */
+.scene { perspective: 1600px; margin-bottom: 18px; }
+.card { position: relative; width: 100%; min-height: 360px; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3,.7,.2,1); cursor: pointer; }
 .card.flipped { transform: rotateY(180deg); }
-.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 18px rgba(20,30,70,.08); padding: 26px 28px; display: flex; flex-direction: column; overflow: auto; }
+.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--card); border: 1px solid var(--rule-2); box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: auto; }
 .face.back { transform: rotateY(180deg); }
-.tag { align-self: flex-start; color: #fff; font-size: 12px; font-weight: 700; padding: 3px 9px; letter-spacing: .04em; }
-.face .q { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 21px; line-height: 1.45; padding: 10px 0; }
-.face .hint { text-align: center; color: var(--muted); font-size: 13px; }
-.face h2 { font-size: 22px; margin: 14px 0 8px; }
-.face .a { font-size: 16.5px; line-height: 1.55; }
-.check { margin-top: 12px; font-size: 13px; color: var(--muted); border-left: 3px solid var(--C); padding-left: 10px; }
+.cardhead { display: flex; justify-content: space-between; gap: 12px; padding: 14px 22px 10px; border-bottom: 1.5px solid var(--margin); font: 500 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.cardhead b { color: var(--ink); font-weight: 500; }
+.face .q { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 26px 36px; font: 400 23px/1.45 var(--serif); }
+.face .q b { font-weight: 600; }
+.face .hint { text-align: center; color: var(--muted); font: 400 12px var(--mono); letter-spacing: .04em; padding: 0 0 16px; }
+.face .ans { padding: 22px 28px 26px; }
+.face h2 { font: 500 27px/1.2 var(--serif); margin: 0 0 12px; letter-spacing: -.01em; }
+.face .a { font-size: 16px; line-height: 1.65; color: var(--ink-2); }
+.face .a b { color: var(--ink); font-weight: 600; }
 
+/* buttons */
 .row { display: flex; gap: 10px; }
 .row > * { flex: 1; }
-.btn { border: 2px solid var(--line); background: var(--panel); padding: 13px 14px; font-weight: 700; }
-.btn:hover { border-color: var(--muted); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn.good { border-color: var(--good); color: var(--good); }
-.btn.bad { border-color: var(--bad); color: var(--bad); }
-.btn.good:hover { background: var(--good); color: #fff; }
-.btn.bad:hover { background: var(--bad); color: #fff; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid var(--rule-2); background: var(--card); padding: 13px 16px; font-weight: 500; font-size: 15px; }
+.btn:hover { border-color: var(--ink-2); }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.btn.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.good:hover { border-color: var(--good); color: var(--good); }
+.btn.bad:hover { border-color: var(--bad); color: var(--bad); }
 .btn:disabled { opacity: .45; cursor: default; }
-.keys { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 10px; }
-kbd { border: 1px solid var(--line); padding: 0 5px; font: 12px ui-monospace, monospace; background: var(--panel); }
+.btn kbd { opacity: .75; }
+.keys { text-align: center; color: var(--muted); font: 400 12px var(--mono); margin-top: 14px; }
+kbd { display: inline-block; min-width: 1.6em; border: 1px solid var(--rule-2); border-bottom-width: 2px; padding: 0 5px; font: 500 11px/1.6 var(--mono); color: inherit; text-align: center; }
 
-/* multiple choice */
-.prompt { background: var(--panel); border: 1px solid var(--line); padding: 22px 24px; margin-bottom: 14px; box-shadow: 0 4px 18px rgba(20,30,70,.06); }
-.prompt .label { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
-.prompt .body { font-size: 18px; line-height: 1.5; }
-.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.opt { text-align: left; border: 2px solid var(--line); background: var(--panel); padding: 14px 16px; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; }
-.opt .n { color: var(--muted); font-weight: 700; min-width: 1em; }
-.opt:hover:not(:disabled) { border-color: var(--accent); }
-.opt.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--panel)); }
-.opt.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, var(--panel)); }
-.opt:disabled { cursor: default; }
-.feedback { margin: 14px 0; padding: 14px 16px; border-left: 4px solid var(--good); background: var(--panel); }
+/* exam question */
+.prompt { margin-bottom: 18px; }
+.prompt .label { font: 500 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.prompt .body { font: 400 22px/1.5 var(--serif); }
+.prompt .body b { font-weight: 600; }
+.opts { display: flex; flex-direction: column; border: 1px solid var(--rule-2); background: var(--card); }
+.opt { display: flex; gap: 14px; align-items: center; text-align: left; border: 0; border-bottom: 1px solid var(--rule); background: none; padding: 14px 16px; font-size: 16px; }
+.opt:last-child { border-bottom: 0; }
+.opt .n { font: 500 12px var(--mono); color: var(--muted); border: 1px solid var(--rule-2); width: 24px; height: 24px; display: grid; place-items: center; flex: none; }
+.opt .mark { margin-left: auto; font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.opt:hover:not(:disabled) { background: var(--accent-soft); }
+.opt:hover:not(:disabled) .n { border-color: var(--accent); color: var(--accent); }
+.opt.right { background: var(--good-soft); box-shadow: inset 3px 0 0 var(--good); }
+.opt.right .n, .opt.right .mark { color: var(--good); border-color: var(--good); }
+.opt.wrong { background: var(--bad-soft); box-shadow: inset 3px 0 0 var(--bad); }
+.opt.wrong .n, .opt.wrong .mark { color: var(--bad); border-color: var(--bad); }
+.opt:disabled { cursor: default; color: var(--ink); }
+.feedback { margin: 18px 0; padding: 2px 0 2px 16px; border-left: 2px solid var(--good); color: var(--ink-2); font-size: 15px; }
 .feedback.no { border-left-color: var(--bad); }
-.feedback b { display: block; margin-bottom: 4px; }
+.feedback b { display: block; font: 500 18px/1.35 var(--serif); color: var(--ink); margin-bottom: 4px; }
 
 /* results */
-.results { background: var(--panel); border: 1px solid var(--line); padding: 26px; text-align: center; }
-.big { font-size: 54px; font-weight: 800; line-height: 1; margin: 6px 0; }
-.missed { text-align: left; margin: 18px 0; padding: 0; list-style: none; }
-.missed li { border-top: 1px solid var(--line); padding: 10px 0; }
-.missed li span { color: var(--muted); font-size: 14px; }
+.results { background: var(--card); border: 1px solid var(--rule-2); box-shadow: var(--shadow); padding: 32px 28px; }
+.results .eyebrow { margin-bottom: 14px; }
+.big { font: 400 72px/1 var(--serif); letter-spacing: -.02em; margin: 0 0 6px; }
+.results .line { color: var(--ink-2); }
+.missed { margin: 24px 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+.missed li { border-bottom: 1px solid var(--rule); padding: 12px 0; }
+.missed li b { font: 500 17px var(--serif); }
+.missed li span { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
 
-/* schedule */
-table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); }
-th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 15px; }
-th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-td input { width: 20px; height: 20px; accent-color: var(--accent); }
-tr.done td { color: var(--muted); text-decoration: line-through; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
-.stat { background: var(--panel); border: 1px solid var(--line); padding: 12px; }
-.stat b { display: block; font-size: 22px; }
-.stat span { font-size: 13px; color: var(--muted); }
-.tips { color: var(--muted); font-size: 14.5px; padding-left: 18px; }
-.link { background: none; border: 0; color: var(--accent); font-weight: 600; padding: 0; text-decoration: underline; }
+/* study plan */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--rule-2); background: var(--card); margin-bottom: 26px; }
+.stat { padding: 16px 18px; border-right: 1px solid var(--rule); }
+.stat:last-child { border-right: 0; }
+.stat span { display: block; font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.stat b { font: 400 30px/1 var(--serif); }
+.weak { font-size: 15px; color: var(--ink-2); margin: -8px 0 24px; }
+.weak b { color: var(--ink); font-weight: 600; }
+h3 { font: 500 11.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--rule-2); }
+th, td { padding: 11px 14px; border-bottom: 1px solid var(--rule); text-align: left; font-size: 15px; }
+th { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font: 500 14px var(--mono); color: var(--muted); width: 3.5em; }
+td input { width: 18px; height: 18px; accent-color: var(--ink); vertical-align: middle; }
+tr.done td:nth-child(2) { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--rule-2); }
+.tips { color: var(--ink-2); font-size: 14.5px; padding-left: 18px; margin: 26px 0 18px; }
+.tips li { margin-bottom: 6px; }
+.link { background: none; border: 0; color: var(--accent); font-weight: 500; padding: 0; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.link.quiet { color: var(--muted); }
 
-@media (max-width: 600px) {
-  .opts { grid-template-columns: 1fr; }
-  .face .q { font-size: 18px; }
-  .card { min-height: 380px; }
-  .stats { grid-template-columns: 1fr 1fr; }
-  th:nth-child(3), td:nth-child(3) { display: none; }
-}
-/* reward panel */
-.reward { position: relative; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 18px rgba(20,30,70,.08); padding: 12px; margin-bottom: 14px; text-align: center; }
-.reward[hidden] { display: none; }
-.reward img, .reward video { display: block; max-width: 100%; max-height: 300px; margin: 0 auto; }
-.reward video { max-height: 360px; background: #000; }
-.reward [hidden] { display: none; }
-.reward .loading { padding: 40px 0; color: var(--muted); font-weight: 600; }
-.reward img.spin, .reward video.spin { animation: spinIn .9s cubic-bezier(.2,.9,.3,1.2) both; }
-.reward img.slam, .reward video.slam { animation: slamIn .6s cubic-bezier(.3,1.4,.5,1) both; }
-.reward[data-kind="punish"] { border: 2px solid var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--panel)); }
+/* reward / punishment plate */
+.reward { position: relative; background: var(--card); border: 1px solid var(--rule-2); box-shadow: var(--shadow); margin-bottom: 22px; }
+.reward[hidden], .reward [hidden] { display: none; }
+.plate-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--rule); font: 500 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.reward .streak { color: var(--ink); }
+.reward .streak.pop { animation: pop .45s ease-out; display: inline-block; }
+.reward .x { width: 28px; height: 28px; border: 1px solid transparent; background: none; font-size: 18px; line-height: 1; color: var(--muted); }
+.reward .x:hover { border-color: var(--rule-2); color: var(--ink); }
+.plate-body { padding: 14px; text-align: center; overflow: hidden; }
+.reward img, .reward video { display: block; max-width: 100%; max-height: 320px; margin: 0 auto; }
+.reward video { max-height: 380px; background: #000; }
+.reward .loading { padding: 48px 0; color: var(--muted); font: 400 13px var(--mono); }
+.reward[data-kind="punish"] { border-color: var(--bad); }
+.reward[data-kind="punish"] .plate-head { background: var(--bad-soft); border-bottom-color: var(--bad); }
 .reward[data-kind="punish"] .streak { color: var(--bad); }
-@keyframes slamIn {
-  0% { transform: scale(2.4) rotate(-10deg); opacity: 0; }
-  55% { transform: scale(.94) rotate(3deg); opacity: 1; }
-  70% { transform: translateX(-8px); } 85% { transform: translateX(8px); }
-  100% { transform: none; }
+.reward img.spin, .reward video.spin { animation: spinIn .85s cubic-bezier(.2,.9,.3,1.15) both; }
+.reward img.slam, .reward video.slam { animation: slamIn .6s cubic-bezier(.3,1.4,.5,1) both; }
+@keyframes spinIn { 0% { transform: scale(0) rotate(-540deg); opacity: 0; } 70% { transform: scale(1.04) rotate(6deg); opacity: 1; } 100% { transform: none; } }
+@keyframes slamIn { 0% { transform: scale(1.9) rotate(-6deg); opacity: 0; } 55% { transform: scale(.97) rotate(1deg); opacity: 1; } 70% { transform: translateX(-6px); } 85% { transform: translateX(6px); } 100% { transform: none; } }
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.confetti { position: fixed; top: 0; left: 0; width: 7px; height: 12px; pointer-events: none; z-index: 50; will-change: transform; }
+.shake { animation: shake .32s; }
+@keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: reduce) { .reward img.spin, .reward video.spin, .reward img.slam, .reward video.slam, .shake, .reward .streak.pop { animation: none; } .card { transition: none; } }
+
+@media (max-width: 640px) {
+  .wrap { padding: 22px 16px 56px; }
+  header { align-items: flex-start; flex-direction: column; gap: 12px; }
+  nav.tabs { gap: 20px; }
+  .chip span { display: none; }
+  .sets { width: 100%; } .chip { flex: 1; justify-content: center; }
+  .card { min-height: 400px; }
+  .face .q { font-size: 20px; padding: 20px 20px; }
+  .face .ans { padding: 18px 18px 22px; }
+  .face h2 { font-size: 23px; }
+  .prompt .body { font-size: 19px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .stat:nth-child(2) { border-right: 0; }
+  .stat:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
+  .big { font-size: 60px; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+  .keys { display: none; }
 }
-.reward .x { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border: 1px solid var(--line); background: var(--panel); font-size: 18px; line-height: 1; }
-.reward .streak { position: absolute; top: 8px; left: 10px; z-index: 2; font-weight: 800; font-size: 14px; color: var(--accent); }
-.reward .streak.pop { animation: pop .5s ease-out; }
-@keyframes spinIn {
-  0% { transform: scale(0) rotate(-720deg); opacity: 0; }
-  70% { transform: scale(1.08) rotate(12deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0); }
-}
-@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.6); } 100% { transform: scale(1); } }
-.confetti { position: fixed; top: 0; left: 0; width: 9px; height: 14px; pointer-events: none; z-index: 50; will-change: transform; }
-.shake { animation: shake .35s; }
-@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
-.mute { background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { .reward img.spin, .reward video.spin, .reward img.slam, .reward video.slam, .shake, .reward .streak.pop { animation: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Arguments, Logic &amp; Fallacies</h1>
-    <span class="sub">24 cards &middot; 4 sets &nbsp;<button class="mute" id="mute" type="button"></button></span>
+    <div>
+      <p class="eyebrow">Critical reasoning &middot; 24 cards &middot; 4 sets</p>
+      <h1>Arguments, Logic &amp; Fallacies</h1>
+    </div>
+    <button class="mute" id="mute" type="button"></button>
   </header>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="cards" aria-selected="true">Flashcards</button>
@@ -157,11 +209,15 @@ tr.done td { color: var(--muted); text-decoration: line-through; }
   </nav>
   <div class="sets" id="sets"></div>
   <aside class="reward" id="reward" hidden aria-live="polite">
-    <span class="streak" id="streak"></span>
-    <button class="x" id="rewardClose" type="button" aria-label="Hide reward">&times;</button>
-    <img id="rewardImg" alt="Reward">
-    <video id="rewardVid" playsinline loop controls hidden></video>
-    <div class="loading" id="rewardLoading" hidden>Loading video&hellip;</div>
+    <div class="plate-head">
+      <span class="streak" id="streak"></span>
+      <button class="x" id="rewardClose" type="button" aria-label="Hide">&times;</button>
+    </div>
+    <div class="plate-body">
+      <img id="rewardImg" alt="">
+      <video id="rewardVid" playsinline loop controls hidden></video>
+      <div class="loading" id="rewardLoading" hidden>Loading video&hellip;</div>
+    </div>
   </aside>
   <main id="view"></main>
 </div>
@@ -227,13 +283,15 @@ function renderSets() {
   const el = $("#sets");
   el.style.display = tab === "cards" || tab === "learn" ? "" : "none";
   el.innerHTML = "ABCD".split("").map(s =>
-    `<button class="chip" data-set="${s}" aria-pressed="${picked.has(s)}" title="${DATA.sets[s]}"><span class="dot" style="background:var(--${s})"></span>Set ${s}</button>`
-  ).join("") + `<button class="chip" data-set="all" aria-pressed="false">All</button>`;
+    `<button class="chip" data-set="${s}" aria-pressed="${picked.has(s) && picked.size < 4}" title="Set ${s}: ${DATA.sets[s]}"><b>${s}</b><span>${DATA.sets[s].split(/[,&]/)[0].trim()}</span></button>`
+  ).join("") + `<button class="chip" data-set="all" aria-pressed="${picked.size === 4}">All</button>`;
 }
 $("#sets").addEventListener("click", e => {
   const b = e.target.closest("[data-set]"); if (!b) return;
   const s = b.dataset.set;
+  // with everything selected, clicking a set studies just that set
   if (s === "all") picked = new Set("ABCD");
+  else if (picked.size === 4) picked = new Set(s);
   else if (picked.has(s) && picked.size > 1) picked.delete(s);
   else picked.add(s);
   store.set("sets", [...picked]);
@@ -270,8 +328,9 @@ function makeQuestion(c) {
 
 function header(total) {
   const s = session, done = s.right.length + s.wrong.length;
-  return `<div class="meta"><span>${Math.min(s.i + 1, total)} / ${total}</span>
-    <span class="score"><span class="g">${s.right.length} right</span> &middot; <span class="b">${s.wrong.length} wrong</span></span></div>
+  const unit = s.mode === "cards" ? "Card" : "Question";
+  return `<div class="meta"><span>${unit} ${Math.min(s.i + 1, total)} of ${total}</span>
+    <span class="score"><span class="g">${s.right.length} correct</span> &nbsp;&middot;&nbsp; <span class="b">${s.wrong.length} missed</span></span></div>
     <div class="bar"><i style="width:${(done / total) * 100}%"></i></div>`;
 }
 
@@ -289,22 +348,21 @@ function renderCard(total) {
   view.innerHTML = header(total) + `
     <div class="scene"><div class="card ${s.flipped ? "flipped" : ""}" id="card" tabindex="0" aria-label="Flashcard, click to flip">
       <div class="face front">
-        <span class="tag" style="background:var(--${c.set})">SET ${c.set} &nbsp;#${c.id}</span>
+        <div class="cardhead"><span><b>${c.set}&middot;${String(c.id).padStart(2, "0")}</b></span><span>${DATA.sets[c.set]}</span></div>
         <div class="q"><div>${c.q}</div></div>
-        <div class="hint">Answer out loud first, then click to flip</div>
+        <div class="hint">Answer it out loud, then flip</div>
       </div>
       <div class="face back">
-        <span class="tag" style="background:var(--${c.set})">ANSWER</span>
-        <h2>${c.title}</h2>
-        <div class="a">${c.a}</div>
+        <div class="cardhead"><span><b>${c.set}&middot;${String(c.id).padStart(2, "0")}</b></span><span>Answer</span></div>
+        <div class="ans"><h2>${c.title}</h2><div class="a">${c.a}</div></div>
       </div>
     </div></div>
     <div class="row" id="grade">
       ${s.flipped
-        ? `<button class="btn bad" data-g="0">&#10007; Got it wrong</button><button class="btn good" data-g="1">&#10003; Got it right</button>`
-        : `<button class="btn primary" data-flip>Flip card</button>`}
+        ? `<button class="btn bad" data-g="0">Missed it <kbd>1</kbd></button><button class="btn primary" data-g="1">Got it <kbd>2</kbd></button>`
+        : `<button class="btn primary" data-flip>Flip card <kbd>Space</kbd></button>`}
     </div>
-    <div class="keys"><kbd>Space</kbd> flip &nbsp; <kbd>1</kbd> wrong &nbsp; <kbd>2</kbd> right</div>`;
+`;
   $("#card").onclick = flip;
   $("#grade").onclick = e => {
     if (e.target.closest("[data-flip]")) flip();
@@ -313,7 +371,7 @@ function renderCard(total) {
 }
 function flip() { session.flipped = !session.flipped; $("#card").classList.toggle("flipped", session.flipped); if (session.flipped) renderCardButtons(); }
 function renderCardButtons() {
-  $("#grade").innerHTML = `<button class="btn bad" data-g="0">&#10007; Got it wrong</button><button class="btn good" data-g="1">&#10003; Got it right</button>`;
+  $("#grade").innerHTML = `<button class="btn bad" data-g="0">Missed it <kbd>1</kbd></button><button class="btn primary" data-g="1">Got it <kbd>2</kbd></button>`;
 }
 function grade(ok) {
   const s = session, c = s.deck[s.i];
@@ -327,16 +385,17 @@ function renderChoice(total) {
   const isTest = s.mode === "test";
   view.innerHTML = header(total) + `
     <div class="prompt">
-      <div class="label">${isTest ? `Question ${q.n}: ${q.n > 10 ? "Judge the argument" : "Name the fallacy"}` : q.label}</div>
+      <div class="label">${isTest ? (q.n > 10 ? "Judge the argument" : "Name the fallacy") : q.label}</div>
       <div class="body">${q.prompt}</div>
     </div>
     <div class="opts" id="opts">${q.opts.map((o, k) => {
       let cls = "";
       if (a) { if (o === q.answer) cls = "right"; else if (o === a) cls = "wrong"; }
-      return `<button class="opt ${cls}" data-o="${k}" ${a ? "disabled" : ""}><span class="n">${k + 1}</span><span>${o}</span></button>`;
+      const mark = cls === "right" ? (o === a ? "Correct" : "Answer") : cls === "wrong" ? "Your pick" : "";
+      return `<button class="opt ${cls}" data-o="${k}" ${a ? "disabled" : ""}><span class="n">${k + 1}</span><span>${o}</span>${mark ? `<span class="mark">${mark}</span>` : ""}</button>`;
     }).join("")}</div>
-    ${a ? feedback(q, a) + `<button class="btn primary" style="width:100%" id="next">${s.i + 1 < total ? "Next question" : "See results"}</button>` : ""}
-    <div class="keys"><kbd>1</kbd>-<kbd>4</kbd> answer &nbsp; <kbd>Enter</kbd> next</div>`;
+    ${a ? feedback(q, a) + `<button class="btn primary" style="width:100%" id="next">${s.i + 1 < total ? "Next question" : "See results"} <kbd>Enter</kbd></button>` : ""}
+    <div class="keys">${a ? "<kbd>Enter</kbd> next question" : "<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> to answer"}</div>`;
   $("#opts").onclick = e => { const b = e.target.closest("[data-o]"); if (b && !a) choose(q.opts[+b.dataset.o]); };
   if (a) $("#next").onclick = next;
 }
@@ -345,7 +404,7 @@ function feedback(q, a) {
   let more = "";
   if (q.card) more = plain(q.card.a.replace(/<i>Check this[^<]*<\/i>/, "")).slice(0, 260);
   else if (EXPLAIN[q.n]) more = EXPLAIN[q.n];
-  return `<div class="feedback ${ok ? "" : "no"}"><b>${ok ? "Correct!" : `Not quite. The answer is ${q.answer}.`}</b>${more}</div>`;
+  return `<div class="feedback ${ok ? "" : "no"}"><b>${ok ? "Correct." : `Not quite. It's ${q.answer}.`}</b>${more}</div>`;
 }
 function choose(o) {
   const s = session, q = s.deck[s.i];
@@ -364,13 +423,12 @@ function renderResults() {
   const prompt = x => x.q ? plain(x.q) : plain(x.prompt);
   if (s.mode === "test") { const best = store.get("bestTest", 0); if (pct > best) store.set("bestTest", pct); }
   view.innerHTML = `<div class="results">
-    <div class="sub">${s.mode === "test" ? "Practice test" : s.mode === "learn" ? "Learn round" : "Flashcard round"} complete</div>
-    <div class="big" style="color:${pct >= 80 ? "var(--good)" : pct >= 50 ? "var(--accent)" : "var(--bad)"}">${pct}%</div>
-    <div>${s.right.length} right, ${s.wrong.length} wrong</div>
-    <p class="sub">${pct === 100 ? "Perfect round." : pct >= 80 ? "Strong. Review the ones you missed and go again." : "Keep going: retry just the missed cards until they stick."}</p>
-    ${s.wrong.length ? `<ul class="missed">${s.wrong.map(x => `<li><b>${name(x)}</b><br><span>${prompt(x).slice(0, 140)}</span></li>`).join("")}</ul>` : ""}
+    <p class="eyebrow">${s.mode === "test" ? "Practice test" : s.mode === "learn" ? "Learn round" : "Flashcard round"} &middot; complete</p>
+    <div class="big" style="color:${pct >= 80 ? "var(--good)" : pct >= 50 ? "var(--ink)" : "var(--bad)"}">${pct}%</div>
+    <div class="line">${s.right.length} of ${total} correct. ${pct === 100 ? "A clean round." : pct >= 80 ? "Strong &mdash; review the misses and go again." : "Retry the misses until they stick."}</div>
+    ${s.wrong.length ? `<ul class="missed">${s.wrong.map(x => `<li><b>${name(x)}</b><span>${prompt(x).slice(0, 140)}</span></li>`).join("")}</ul>` : "<div style='height:24px'></div>"}
     <div class="row">
-      ${s.wrong.length && s.mode !== "test" ? `<button class="btn bad" id="retry">Retry ${s.wrong.length} missed</button>` : ""}
+      ${s.wrong.length && s.mode !== "test" ? `<button class="btn" id="retry">Retry ${s.wrong.length} missed</button>` : ""}
       <button class="btn primary" id="again">Start over</button>
     </div></div>`;
   $("#again").onclick = () => start();
@@ -386,12 +444,13 @@ function renderPlan() {
   const weak = cards.filter(c => stats[c.id] && stats[c.id].w > 0).sort((a, b) => (stats[b.id].w - stats[b.id].r) - (stats[a.id].w - stats[a.id].r)).slice(0, 5);
   view.innerHTML = `
     <div class="stats">
-      <div class="stat"><b>${seen}/24</b><span>cards studied</span></div>
-      <div class="stat"><b>${acc}</b><span>overall accuracy</span></div>
-      <div class="stat"><b>${Object.values(done).filter(Boolean).length}/15</b><span>days done</span></div>
-      <div class="stat"><b>${store.get("bestTest", 0)}%</b><span>best test score</span></div>
+      <div class="stat"><span>Studied</span><b>${seen}/24</b></div>
+      <div class="stat"><span>Accuracy</span><b>${acc}</b></div>
+      <div class="stat"><span>Days done</span><b>${Object.values(done).filter(Boolean).length}/15</b></div>
+      <div class="stat"><span>Best test</span><b>${store.get("bestTest", 0)}%</b></div>
     </div>
-    ${weak.length ? `<p><b>Weakest cards:</b> ${weak.map(c => `${c.title} (#${c.id})`).join(", ")}. <button class="link" id="drill">Drill these</button></p>` : ""}
+    ${weak.length ? `<p class="weak"><b>Weakest:</b> ${weak.map(c => c.title).join(", ")}. <button class="link" id="drill">Drill these</button></p>` : ""}
+    <h3>Review schedule</h3>
     <table><thead><tr><th>Day</th><th>Task</th><th>Cards</th><th>Done</th><th></th></tr></thead><tbody>
     ${SCHEDULE.map(([d, t, sets]) => `<tr class="${done[d] ? "done" : ""}"><td><b>${d}</b></td><td>${t}</td><td>${sets.length * 6}</td>
       <td><input type="checkbox" data-day="${d}" ${done[d] ? "checked" : ""} aria-label="Day ${d} done"></td>
@@ -404,7 +463,7 @@ function renderPlan() {
       <li>Most days are 6-12 cards (10-15 min). Day 4 is the heavy one at 18 cards.</li>
       <li>Check cards 15, 20 and 21 against your course materials.</li>
     </ul>
-    <p><button class="link" id="reset">Reset all progress</button></p>`;
+    <p><button class="link quiet" id="reset">Reset all progress</button></p>`;
   view.querySelectorAll("[data-day]").forEach(b => b.onchange = () => { done[b.dataset.day] = b.checked; store.set("plan", done); renderPlan(); });
   view.querySelectorAll("[data-study]").forEach(b => b.onclick = () => { picked = new Set(b.dataset.study); store.set("sets", [...picked]); tab = "cards"; store.set("tab", tab); start(); });
   const dr = $("#drill"); if (dr) dr.onclick = () => { tab = "learn"; start(shuffle(weak)); };
@@ -525,7 +584,7 @@ function celebrate() {
   sound(true);
   confetti();
   const st = $("#streak");
-  const label = streak > 1 ? `\u{1F525} ${streak} in a row` : "";
+  const label = streak > 1 ? `Reward \u00b7 streak ${streak}` : "Reward";
   if (pools.reward.items.length) showMedia("reward", label);
   else if ($("#reward").dataset.kind !== "punish") st.textContent = label;
   st.classList.remove("pop"); void st.offsetWidth; st.classList.add("pop");
@@ -535,7 +594,7 @@ function miss() {
   sound(false);
   const el = $("#card") || $("#opts");
   if (el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
-  if (pools.punish.items.length) showMedia("punish", "\u{1F608} Punishment");
+  if (pools.punish.items.length) showMedia("punish", "Punishment");
   else if ($("#reward").dataset.kind !== "punish") $("#streak").textContent = "";
 }
 $("#rewardClose").onclick = () => { $("#reward").hidden = true; $("#rewardVid").pause(); };
@@ -544,7 +603,9 @@ let muted = store.get("muted", false), actx = null;
 // Hard mute: silences effects and videos, and keeps videos silent even if their own volume control is used
 function renderMute() {
   const b = $("#mute");
-  b.textContent = muted ? "\u{1F507} Muted" : "\u{1F50A} Sound on";
+  b.innerHTML = muted
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>Muted`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12"/></svg>Sound on`;
   b.title = muted ? "Everything is muted, including videos. Click to turn sound on." : "Click to mute everything, including videos.";
   b.setAttribute("aria-pressed", muted);
 }
@@ -577,7 +638,7 @@ function sound(ok) {
 }
 function confetti() {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const colors = ["#4255ff", "#18a26b", "#e0483e", "#ffb020", "#c44dd8", "#2bb3e0"];
+  const colors = ["#23407a", "#2f6b3f", "#a3322a", "#c79a3b", "#1c1b18", "#d9a3a0"];
   const cx = innerWidth / 2, cy = innerHeight / 3;
   for (let i = 0; i < 70; i++) {
     const d = document.createElement("i");
