@@ -157,6 +157,15 @@
     "punishments/1790982464392-screenshot-2026-10-02-190626.png",
     "punishments/1790982467502-screenshot-2026-10-02-190609.png",
     "punishments/1790982470723-screenshot-2026-10-02-190531.png",
-    "punishments/1790982475067-screenshot-2026-10-02-190517.png"
+    "punishments/1790982475067-screenshot-2026-10-02-190517.png",
+    {
+      "type": "video",
+      "id": "punishments/1791031716605-y7gxmvkhyrvz1bbb",
+      "mime": "video/mp4",
+      "size": 1195105,
+      "parts": [
+        "punishments/1791031716605-y7gxmvkhyrvz1bbb/part000.bin"
+      ]
+    }
   ]
 }
